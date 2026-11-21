@@ -8,6 +8,7 @@ import type { ReaderKeyHandlers } from './useReaderKeys';
  *   A                                 reveal whole paragraph
  *   L                                 listen (read aloud)
  *   Esc                               back to library
+ *   ? / F1                            keyboard shortcuts
  */
 export function useReaderKeys(h: ReaderKeyHandlers): void {
   const ref = useRef(h);
@@ -25,6 +26,7 @@ export function useReaderKeys(h: ReaderKeyHandlers): void {
       else if (k === 'ArrowLeft' || k === 'Backspace' || k === 'k' || k === 'PageUp' || k === 'ArrowUp') ref.current.back();
       else if (k === 'a') ref.current.revealAll();
       else if (k === 'l') ref.current.toggleListen();
+      else if (k === '?' || k === 'F1') ref.current.showHelp();
       else if (k === 'Escape') ref.current.exit();
       else handled = false;
       if (handled) e.preventDefault();

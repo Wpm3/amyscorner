@@ -23,11 +23,15 @@ fs.rmSync(app, { recursive: true, force: true });
 fs.cpSync(dist, app, { recursive: true });
 fs.copyFileSync(path.join(root, 'desktop', 'build', 'icon.png'), path.join(app, 'icon.png'));
 
-// Neutralino's static server has no SPA fallback, so a reload on /reader/<id>
-// would 404. Send reloads back to the library instead.
+// Neutralino client (for native full screen) + desktop shell helpers
+// (reload guard, no browser context menu, F11). Loaded before the app bundle.
+fs.copyFileSync(path.join(here, 'node_modules', '@neutralinojs', 'lib', 'dist', 'neutralino.js'), path.join(app, 'neutralino.js'));
+fs.copyFileSync(path.join(here, 'shell.js'), path.join(app, 'shell.js'));
 const indexPath = path.join(app, 'index.html');
-const guard = `<script>(function(){addEventListener('keydown',function(e){if(e.key==='F5'||((e.ctrlKey||e.metaKey)&&(e.key==='r'||e.key==='R'))){e.preventDefault();if(location.pathname!=='/')location.replace('/');}},true);})();</script>`;
-fs.writeFileSync(indexPath, fs.readFileSync(indexPath, 'utf8').replace('<head>', `<head>${guard}`));
+fs.writeFileSync(
+  indexPath,
+  fs.readFileSync(indexPath, 'utf8').replace('<head>', '<head><script src="/neutralino.js"></script><script src="/shell.js"></script>'),
+);
 
 if (!fs.existsSync(path.join(here, 'bin', 'neutralino-win_x64.exe'))) execSync('npx neu update', { cwd: here, stdio: 'inherit' });
 fs.rmSync(path.join(here, 'dist'), { recursive: true, force: true });

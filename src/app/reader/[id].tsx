@@ -37,9 +37,20 @@ function hintText(layout: 'zones' | 'anywhere'): string {
   const tap = desktop ? 'Click' : 'Tap';
   if (layout === 'anywhere') return `${tap} anywhere${desktop ? ' (or press Space)' : ''} to reveal the next sentence. Press and hold to show the whole paragraph.`;
   return desktop
-    ? 'Click the right side, or press → / Space, to reveal the next sentence. Click the left side, or press ←, to go back. Press A to show the whole paragraph.'
+    ? 'Click the right side, or press → / Space, to reveal the next sentence. Click the left side, or press ←, to go back. Press ? to see all keyboard shortcuts.'
     : 'Tap the right side to reveal the next sentence. Tap the left side to go back. Press and hold to show the whole paragraph.';
 }
+
+const KEYS: [string, string][] = [
+  ['→  Space  Enter', 'Next sentence'],
+  ['←  Backspace', 'Previous sentence'],
+  ['A', 'Show the whole paragraph'],
+  ['L', 'Listen (read aloud)'],
+  ['F11', 'Full screen'],
+  ['Ctrl +  /  Ctrl −', 'Bigger / smaller'],
+  ['?  or  F1', 'Show these shortcuts'],
+  ['Esc', 'Back to library'],
+];
 
 const RECAP_AFTER_MS = 12 * 60 * 60 * 1000;
 
@@ -240,7 +251,15 @@ export default function Reader() {
     }
   };
 
-  useReaderKeys({ next, back, revealAll, toggleListen, exit: () => router.back() });
+  const [showKeys, setShowKeys] = useState(false);
+  useReaderKeys({
+    next,
+    back,
+    revealAll,
+    toggleListen,
+    showHelp: () => setShowKeys((v) => !v),
+    exit: () => (showKeys ? setShowKeys(false) : router.back()),
+  });
 
   const font = fontFamily(settings.font);
   const muted = { color: theme.muted, fontFamily: font };
@@ -273,6 +292,9 @@ export default function Reader() {
         <Button label="‹ Library" kind="ghost" onPress={() => router.back()} />
         <Text numberOfLines={1} style={[muted, styles.bookTitle]}>{book.title}</Text>
         <Button label={listening ? '■ Stop' : '▶ Listen'} kind="ghost" onPress={toggleListen} accessibilityHint="Reads and reveals sentences aloud" />
+        {Platform.OS === 'web' && (
+          <Button label="⌨" kind="ghost" onPress={() => setShowKeys((v) => !v)} accessibilityHint="Keyboard shortcuts" />
+        )}
         <Button label="Aa" kind="ghost" onPress={() => router.push('/settings')} accessibilityHint="Reading settings" />
       </View>
       {settings.showBookProgress && (
@@ -366,12 +388,31 @@ export default function Reader() {
         </View>
         <Button label="›" kind="ghost" onPress={next} style={styles.navBtn} accessibilityHint="Next sentence" />
       </View>
+      {showKeys && (
+        <Pressable style={styles.keysBackdrop} onPress={() => setShowKeys(false)} accessibilityRole="button" accessibilityLabel="Close keyboard shortcuts">
+          <View style={[styles.keysPanel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Text accessibilityRole="header" style={{ color: theme.text, fontFamily: fontFamily(settings.font, true), fontSize: 20, marginBottom: 12 }}>
+              Keyboard shortcuts
+            </Text>
+            {KEYS.map(([keys, what]) => (
+              <View key={keys} style={styles.keyRow}>
+                <Text style={{ color: theme.text, fontFamily: fontFamily(settings.font, true), fontSize: 16, width: 170 }}>{keys}</Text>
+                <Text style={{ color: theme.text, fontFamily: font, fontSize: 16, flex: 1 }}>{what}</Text>
+              </View>
+            ))}
+            <Text style={{ color: theme.muted, fontFamily: font, fontSize: 14, marginTop: 12 }}>Click anywhere or press Esc to close.</Text>
+          </View>
+        </Pressable>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  keysBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center', padding: 16 },
+  keysPanel: { width: '100%', maxWidth: 460, padding: 20, borderRadius: 16, borderWidth: 1 },
+  keyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, minHeight: 52 },
   bookTitle: { flex: 1, fontSize: 15, textAlign: 'center' },

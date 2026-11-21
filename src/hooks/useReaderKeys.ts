@@ -4,6 +4,7 @@ export interface ReaderKeyHandlers {
   revealAll: () => void;
   exit: () => void;
   toggleListen: () => void;
+  showHelp: () => void;
 }
 
 /** Keyboard shortcuts exist on desktop/web only. */

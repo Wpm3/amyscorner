@@ -93,7 +93,7 @@ The bundle ID and package name are `com.amyscorner.unfold` (set in `app.json`).
 The Windows version is the same app wrapped in [Electron](https://www.electronjs.org/) (`desktop/`). It shares every parser, the segmenter and the reader with the phone apps.
 
 Desktop additions:
-- **Keyboard:** `→` / `Space` / `Enter` for the next sentence, `←` / `Backspace` to go back, `A` to reveal the whole paragraph, `L` to listen, `Esc` to return to the library. `Ctrl +` / `Ctrl −` zooms and `F11` is full screen.
+- **Keyboard:** `→` / `Space` / `Enter` for the next sentence, `←` / `Backspace` to go back, `A` to reveal the whole paragraph, `L` to listen, `?` or `F1` for a shortcuts panel (also the ⌨ button), `Esc` to return to the library. `Ctrl +` / `Ctrl −` zooms and `F11` is full screen.
 - **Drag and drop** a document onto the window to import it.
 - **Mouse:** click the right or left side of the page, the same as tapping on a phone.
 - **Storage:** books are kept in IndexedDB, and settings and positions in local storage, under the app's own `app://` origin. Everything persists between launches.
@@ -103,7 +103,7 @@ There are two Windows builds:
 
 | Build | Size | Engine | Notes |
 |---|---|---|---|
-| **Lite** (`desktop-lite/`, Neutralinojs) | **~2 MB zip, single `Unfold.exe`** | The Microsoft Edge WebView2 built into Windows 10/11 | Recommended download. Your data is stored in an `Unfold.exe.WebView2` folder next to the exe. It uses local port 47781. |
+| **Lite** (`desktop-lite/`, Neutralinojs) | **~2 MB zip, single `Unfold.exe`** | The Microsoft Edge WebView2 built into Windows 10/11 | Recommended download. Your library is stored in your Windows profile (AppData), so you can move the exe freely. It uses local port 47781, so close any other app using that port. F11 toggles full screen and `?` shows the shortcuts. Reloading and the browser right-click menu are disabled. |
 | Full (`desktop/`, Electron) | ~150 MB | Bundled Chromium | Includes an installer and a menu bar. It doesn't depend on WebView2 being present. |
 
 Build the lite version (this works from Linux, macOS or Windows, and needs no Wine):

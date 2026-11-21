@@ -7,10 +7,17 @@
   "documentRoot": "/app/",
   "url": "/",
   "enableServer": true,
-  "enableNativeAPI": false,
+  "enableNativeAPI": true,
   "tokenSecurity": "one-time",
-  "logging": { "enabled": false, "writeToLogFile": false },
-  "nativeAllowList": [],
+  "logging": {
+    "enabled": false,
+    "writeToLogFile": false
+  },
+  "nativeAllowList": [
+    "window.setFullScreen",
+    "window.exitFullScreen",
+    "window.isFullScreen"
+  ],
   "modes": {
     "window": {
       "title": "Unfold",
@@ -31,6 +38,9 @@
     "extensionsPath": "/extensions/",
     "binaryVersion": "6.7.0",
     "clientVersion": "6.7.0",
-    "frontendLibrary": {}
-  }
+    "frontendLibrary": {},
+    "clientLibrary": "/app/neutralino.js"
+  },
+  "dataLocation": "system",
+  "storageLocation": "system"
 }
