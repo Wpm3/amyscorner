@@ -140,7 +140,7 @@ There are two Windows builds:
 
 | Build | Size | Engine | Notes |
 |---|---|---|---|
-| **Lite** (`desktop-lite/`, Neutralinojs) | **~2 MB zip, single `Unfold.exe`** | The Microsoft Edge WebView2 built into Windows 10/11 | Recommended download. Your library is stored in your Windows profile (AppData), so you can move the exe freely. It uses local port 47781, so close any other app using that port. F11 toggles full screen and `?` shows the shortcuts. Reloading and the browser right-click menu are disabled. |
+| **Lite** (`desktop-lite/`, Neutralinojs) | **~2 MB zip, single `Unfold.exe`** | The Microsoft Edge WebView2 built into Windows 10/11 | Recommended download. Your library is stored in your Windows profile (AppData), so you can move the exe freely. It uses local port 47781, so close any other app using that port. F11 fills the window with the page (maximise the window for full screen) and `?` shows the shortcuts. The Neutralino native API is disabled because its token handshake failed on Windows. Reloading and the browser right-click menu are disabled. |
 | Full (`desktop/`, Electron) | ~150 MB | Bundled Chromium | Includes an installer and a menu bar. It doesn't depend on WebView2 being present. |
 
 Build the lite version (this works from Linux, macOS or Windows, and needs no Wine):

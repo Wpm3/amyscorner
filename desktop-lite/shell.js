@@ -32,29 +32,12 @@
     e.preventDefault();
   });
 
-  var native = false;
+  // F11: HTML full screen (fills the window's web view). Maximise the window
+  // for a true full-screen view.
   function toggleFullScreen() {
-    if (native && window.Neutralino) {
-      Neutralino.window
-        .isFullScreen()
-        .then(function (on) {
-          return on ? Neutralino.window.exitFullScreen() : Neutralino.window.setFullScreen();
-        })
-        .catch(fallback);
-    } else fallback();
-  }
-  function fallback() {
-    if (document.fullscreenElement) document.exitFullscreen();
+    if (document.fullscreenElement) document.exitFullscreen().catch(function () {});
     else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function () {});
   }
 
-  if (window.Neutralino && typeof window.NL_PORT !== 'undefined') {
-    try {
-      Neutralino.init();
-      native = true;
-    } catch (e) {
-      native = false;
-    }
-  }
   window.__UNFOLD_DESKTOP__ = { toggleFullScreen: toggleFullScreen };
 })();

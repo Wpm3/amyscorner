@@ -10,7 +10,6 @@
     "build:raw": "neu build --release --embed-resources"
   },
   "devDependencies": {
-    "@neutralinojs/lib": "^6.7.0",
     "@neutralinojs/neu": "^11.8.0",
     "pe-library": "^1.0.1",
     "resedit": "^2.0.3"
