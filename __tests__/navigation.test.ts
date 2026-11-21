@@ -31,6 +31,11 @@ describe('reader navigation', () => {
     expect(stepBack({ block: 0, revealed: 0 }, count, false).event).toBe('start');
   });
 
+  it('respects the content range (front/back matter skipped)', () => {
+    expect(stepForward({ block: 1, revealed: 3 }, count, 2, false).event).toBe('end');
+    expect(stepBack({ block: 1, revealed: 0 }, count, false, 1).event).toBe('start');
+  });
+
   it('clamps stale positions', () => {
     expect(clampPosition({ block: 9, revealed: 9 }, count, 3)).toEqual({ block: 2, revealed: 1 });
     expect(clampPosition({ block: -1, revealed: -3 }, count, 3)).toEqual({ block: 0, revealed: 0 });

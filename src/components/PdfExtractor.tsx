@@ -13,6 +13,7 @@ interface Job {
   pages: PdfPage[];
   title?: string;
   author?: string;
+  outline?: { title: string; level: number; page: number | null }[];
   onProgress?: Progress;
   resolve: (doc: ParsedDocument) => void;
   reject: (err: Error) => void;
@@ -64,6 +65,9 @@ export function PdfExtractorProvider({ children }: { children: ReactNode }) {
           job.author = msg.author ?? undefined;
           job.onProgress?.(0, msg.total);
           break;
+        case 'outline':
+          job.outline = msg.items;
+          break;
         case 'pages':
           job.pages.push(...msg.pages);
           job.onProgress?.(msg.done, msg.total);
@@ -72,7 +76,7 @@ export function PdfExtractorProvider({ children }: { children: ReactNode }) {
           const doc = pdfPagesToBlocks(job.pages);
           finish();
           if (!doc.blocks.length) job.reject(new Error('This PDF has no text layer (it may be a scanned image).'));
-          else job.resolve({ ...doc, title: job.title, author: job.author });
+          else job.resolve({ ...doc, title: job.title, author: job.author, toc: job.outline });
           break;
         }
         case 'error':

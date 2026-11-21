@@ -1,4 +1,5 @@
 import type { Block, Book, BookFormat, ParsedDocument } from '../text/blocks';
+import { analyzeDocument, STRUCTURE_VERSION } from '../text/structure';
 import { deleteBookFile, readBookFile, writeBookFile } from './bookFiles';
 import { getJson, getJsonArray, removeKey, setJson } from './storage';
 
@@ -10,6 +11,8 @@ export interface BookSummary {
   addedAt: number;
   lastOpenedAt?: number;
   blockCount: number;
+  contentStart?: number;
+  contentEnd?: number;
 }
 
 export interface ReadingPosition {
@@ -31,9 +34,10 @@ export async function addBook(doc: ParsedDocument, format: BookFormat, fallbackT
   if (!doc.blocks.length) throw new Error('No readable text was found in this document.');
   const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const title = (doc.title?.trim() || fallbackTitle.replace(/\.[a-z0-9]+$/i, '')).slice(0, 200);
-  const book: Book = { id, title, author: doc.author, format, addedAt: Date.now(), blocks: doc.blocks };
+  const { blocks, toc, content } = analyzeDocument(doc);
+  const book: Book = { id, title, author: doc.author, format, addedAt: Date.now(), blocks, toc, content, structureVersion: STRUCTURE_VERSION };
   await writeBookFile(id, JSON.stringify(book));
-  const summary: BookSummary = { id, title, author: doc.author, format, addedAt: book.addedAt, blockCount: doc.blocks.length };
+  const summary: BookSummary = { id, title, author: doc.author, format, addedAt: book.addedAt, blockCount: blocks.length, contentStart: content.start, contentEnd: content.end };
   const index = await getJsonArray<BookSummary>(INDEX_KEY);
   await setJson(INDEX_KEY, [summary, ...index]);
   return summary;
@@ -42,11 +46,21 @@ export async function addBook(doc: ParsedDocument, format: BookFormat, fallbackT
 export async function loadBook(id: string): Promise<Book | null> {
   const raw = await readBookFile(id);
   if (!raw) return null;
-  const book = JSON.parse(raw) as Book;
+  let book = JSON.parse(raw) as Book;
+  if ((book.structureVersion ?? 0) < STRUCTURE_VERSION || !book.toc || !book.content) {
+    // Imported before structure detection existed: analyse it now and save.
+    const analyzed = analyzeDocument({ blocks: book.blocks });
+    book = { ...book, ...analyzed, structureVersion: STRUCTURE_VERSION };
+    await writeBookFile(id, JSON.stringify(book));
+  }
   const index = await getJsonArray<BookSummary>(INDEX_KEY);
   await setJson(
     INDEX_KEY,
-    index.map((b) => (b.id === id ? { ...b, lastOpenedAt: Date.now() } : b)),
+    index.map((b) =>
+      b.id === id
+        ? { ...b, lastOpenedAt: Date.now(), blockCount: book.blocks.length, contentStart: book.content.start, contentEnd: book.content.end }
+        : b,
+    ),
   );
   return book;
 }

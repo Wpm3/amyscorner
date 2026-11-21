@@ -29,6 +29,8 @@ export interface Settings {
   showBookProgress: boolean;
   breakReminderMinutes: number; // 0 = off
   autoRevealFirst: boolean;
+  /** Start at the real text and stop before back matter (copyright, contents, index…). */
+  skipFrontBack: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -50,6 +52,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showBookProgress: false,
   breakReminderMinutes: 25,
   autoRevealFirst: false,
+  skipFrontBack: true,
 };
 
 const KEY = 'settings.v1';

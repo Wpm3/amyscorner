@@ -15,6 +15,43 @@ On Windows, the desktop app looks like this:
 ## Supported documents
 PDF (text-based), EPUB, Word `.docx`, OpenDocument `.odt`, RTF, HTML/XHTML, Markdown, FB2 and plain text. You can also paste text. Everything is parsed **on the device**, and nothing is uploaded.
 
+## Finding the real text, and a table of contents
+When a document is imported, `src/text/structure.ts` works out where the actual content begins and ends. It also rebuilds paragraphs that page breaks cut apart.
+
+**Where reading starts and stops.** Unfold uses the first source that's available:
+1. **Built-in table of contents:**
+   - PDF bookmarks, read with pdf.js `getOutline()`
+   - EPUB 3 `nav` or the EPUB 2 NCX
+   - Word TOC fields, including their `_Toc` bookmarks
+2. **Explicit markers:**
+   - EPUB `landmarks` (bodymatter) and `<guide>`
+   - EPUB `epub:type` section types (titlepage, copyright-page, backmatter…)
+   - Project Gutenberg START/END lines
+3. **A printed "Contents" page.** It's recognised by lines ending in page numbers or dot leaders, then matched to the headings that follow.
+4. **Heuristics** for documents with none of the above:
+   - copyright and legal wording (©, "all rights reserved", ISBN, "published by"…)
+   - front-matter titles (dedication, contents…)
+   - title-page fragments before the first chapter
+   - back-matter titles (acknowledgments, about the author, notes, index…)
+
+The result is a content range and a TOC. Front and back matter appear in the TOC as "skipped". Reading starts at the first chapter and stops before the back matter. You can turn this off with Settings → *Skip copyright, contents and back matter*.
+
+**Page breaks.** For PDFs:
+- A paragraph whose last line reaches the margin without finishing its sentence continues onto the next page.
+- A paragraph continues at a sentence end too, unless its last line was short or the new page starts with an indent.
+- Footnotes are dropped, along with their reference markers, so they can't split a paragraph.
+
+Every format then gets a merge pass. It joins a paragraph that doesn't end a sentence to the next one when that one continues it: it starts lower-case, the cut fell after a word like "the" or "and", or a hyphenated word was split.
+
+**Table of contents panel.** The ☰ button, or `C` on desktop, opens the contents:
+- On phones it's a slide-over drawer. On windows 900px or wider it's a sidebar.
+- Sections with sub-entries expand and collapse.
+- The current chapter is highlighted and also shown under the book title.
+
+| Contents drawer (phone) | Contents sidebar (desktop) |
+|---|---|
+| ![](docs/screenshots/contents-phone.png) | ![](docs/screenshots/contents-desktop.png) |
+
 ## Design decisions (from the "council")
 Three research passes shaped the app: reading UX for ADHD and low executive function, mobile architecture, and sentence/clause segmentation.
 
@@ -93,7 +130,7 @@ The bundle ID and package name are `com.amyscorner.unfold` (set in `app.json`).
 The Windows version is the same app wrapped in [Electron](https://www.electronjs.org/) (`desktop/`). It shares every parser, the segmenter and the reader with the phone apps.
 
 Desktop additions:
-- **Keyboard:** `→` / `Space` / `Enter` for the next sentence, `←` / `Backspace` to go back, `A` to reveal the whole paragraph, `L` to listen, `?` or `F1` for a shortcuts panel (also the ⌨ button), `Esc` to return to the library. `Ctrl +` / `Ctrl −` zooms and `F11` is full screen.
+- **Keyboard:** `→` / `Space` / `Enter` for the next sentence, `←` / `Backspace` to go back, `A` to reveal the whole paragraph, `L` to listen, `C` for the table of contents, `?` or `F1` for a shortcuts panel (also the ⌨ button), `Esc` to return to the library. `Ctrl +` / `Ctrl −` zooms and `F11` is full screen.
 - **Drag and drop** a document onto the window to import it.
 - **Mouse:** click the right or left side of the page, the same as tapping on a phone.
 - **Storage:** books are kept in IndexedDB, and settings and positions in local storage, under the app's own `app://` origin. Everything persists between launches.

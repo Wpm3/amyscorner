@@ -100,7 +100,9 @@ export default function Library() {
         }
         renderItem={({ item }) => {
           const pos = positions[item.id];
-          const pct = pos && item.blockCount ? Math.round((pos.block / Math.max(1, item.blockCount - 1)) * 100) : 0;
+          const from = item.contentStart ?? 0;
+          const to = item.contentEnd ?? item.blockCount;
+          const pct = pos ? Math.round(Math.min(1, Math.max(0, (pos.block - from) / Math.max(1, to - from - 1))) * 100) : 0;
           return (
             <Pressable
               onPress={() => router.push(`/reader/${item.id}`)}

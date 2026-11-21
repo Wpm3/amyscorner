@@ -19,11 +19,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ParagraphView } from '../../components/ParagraphView';
+import { currentTocIndex, TocPanel } from '../../components/TocPanel';
 import { useReaderKeys } from '../../hooks/useReaderKeys';
 import { Button } from '../../components/ui';
 import { getPosition, loadBook, savePosition } from '../../store/library';
 import { useSettings } from '../../store/settings';
-import type { Book } from '../../text/blocks';
+import type { Book, TocEntry } from '../../text/blocks';
 import { clampPosition, stepBack, stepForward, type Position } from '../../text/navigation';
 import { segmentBlock, type Sentence } from '../../text/paragraph';
 import { withAlpha } from '../../theme/color';
@@ -48,14 +49,20 @@ const KEYS: [string, string][] = [
   ['L', 'Listen (read aloud)'],
   ['F11', 'Full screen'],
   ['Ctrl +  /  Ctrl −', 'Bigger / smaller'],
+  ['C', 'Table of contents'],
   ['?  or  F1', 'Show these shortcuts'],
   ['Esc', 'Back to library'],
 ];
 
+const WIDE = 900; // docked sidebar at this window width and up
+const SIDEBAR = 320;
 const RECAP_AFTER_MS = 12 * 60 * 60 * 1000;
 
+// Keep the screen on while reading (phones). Browsers/desktop reject wake locks often, so skip there.
+const useReaderAwake: () => void = Platform.OS === 'web' ? () => {} : useKeepAwake;
+
 export default function Reader() {
-  useKeepAwake();
+  useReaderAwake();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { settings, theme } = useSettings();
   const insets = useSafeAreaInsets();
@@ -69,6 +76,7 @@ export default function Reader() {
   const [listening, setListening] = useState(false);
   const [breakDue, setBreakDue] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [tocOpen, setTocOpen] = useState(false);
 
   const segCache = useRef(new Map<number, Sentence[]>());
   const lastTap = useRef(0);
@@ -106,9 +114,10 @@ export default function Reader() {
         segCache.current.clear();
         const saved = await getPosition(b.id);
         const counter = (i: number) => segmentBlock(b.blocks[i]).length;
-        const start = clampPosition(saved, counter, b.blocks.length);
+        // First open: jump straight past the front matter to where the text begins.
+        const start = saved.updatedAt ? clampPosition(saved, counter, b.blocks.length) : { block: b.content.start, revealed: 0 };
         setBook(b);
-        setPos(start.block === 0 && start.revealed === 0 && settings.autoRevealFirst ? { block: 0, revealed: 1 } : start);
+        setPos(start.revealed === 0 && settings.autoRevealFirst ? { block: start.block, revealed: 1 } : start);
         // "Where was I?" — after a long gap, show the last thing read before resuming.
         if (saved.updatedAt && Date.now() - saved.updatedAt > RECAP_AFTER_MS && (start.block > 0 || start.revealed > 0)) {
           const prevBlock = start.revealed > 0 ? start.block : start.block - 1;
@@ -149,6 +158,16 @@ export default function Reader() {
 
   const sentences = book ? sentencesOf(pos.block) : [];
 
+  // Reading bounds: the detected content (front/back matter skipped), unless the
+  // reader turned that off or deliberately jumped into a skipped section.
+  const bounds = useMemo(() => {
+    if (!book) return { start: 0, end: 0 };
+    const all = { start: 0, end: book.blocks.length };
+    const c = book.content;
+    if (!settings.skipFrontBack || !c || pos.block < c.start || pos.block >= c.end) return all;
+    return { start: c.start, end: c.end };
+  }, [book, settings.skipFrontBack, pos.block]);
+
   const speak = useCallback(
     (text: string, onDone?: () => void) => {
       Speech.stop();
@@ -166,7 +185,7 @@ export default function Reader() {
   const next = useCallback(() => {
     if (!book) return;
     setRecap(null);
-    const r = stepForward(pos, count, book.blocks.length, settings.autoRevealFirst);
+    const r = stepForward(pos, count, bounds.end, settings.autoRevealFirst);
     if (r.event === 'end') {
       setFinished(true);
       setListening(false);
@@ -181,19 +200,33 @@ export default function Reader() {
       Haptics.selectionAsync().catch(() => {});
     }
     setPos(r.pos);
-  }, [book, pos, count, settings.autoRevealFirst, settings.haptics, animateIn]);
+  }, [book, pos, count, bounds.end, settings.autoRevealFirst, settings.haptics, animateIn]);
 
   const back = useCallback(() => {
     if (!book) return;
     setFinished(false);
     setListening(false);
     Speech.stop();
-    const r = stepBack(pos, count, settings.autoRevealFirst);
+    const r = stepBack(pos, count, settings.autoRevealFirst, bounds.start);
     if (r.event === 'start') return;
     if (r.event === 'prevParagraph') animateIn();
     if (settings.haptics && HAS_HAPTICS) Haptics.selectionAsync().catch(() => {});
     setPos(r.pos);
-  }, [book, pos, count, settings.autoRevealFirst, settings.haptics, animateIn]);
+  }, [book, pos, count, bounds.start, settings.autoRevealFirst, settings.haptics, animateIn]);
+
+  const jumpTo = useCallback(
+    (entry: TocEntry) => {
+      setFinished(false);
+      setRecap(null);
+      setListening(false);
+      Speech.stop();
+      animateIn();
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+      setPos({ block: entry.block, revealed: settings.autoRevealFirst ? 1 : 0 });
+      if (width < WIDE) setTocOpen(false);
+    },
+    [animateIn, settings.autoRevealFirst, width],
+  );
 
   const revealAll = useCallback(() => {
     if (!book) return;
@@ -258,7 +291,8 @@ export default function Reader() {
     revealAll,
     toggleListen,
     showHelp: () => setShowKeys((v) => !v),
-    exit: () => (showKeys ? setShowKeys(false) : router.back()),
+    toggleContents: () => setTocOpen((v) => !v),
+    exit: () => (showKeys ? setShowKeys(false) : tocOpen ? setTocOpen(false) : router.back()),
   });
 
   const font = fontFamily(settings.font);
@@ -282,24 +316,49 @@ export default function Reader() {
 
   const block = book.blocks[pos.block];
   const revealedText = sentences.slice(0, pos.revealed).map((s) => s.text).join(' ');
-  const columnWidth = Math.min(width - 40, settings.fontSize * 34);
-  const isFirstEver = pos.block === 0 && pos.revealed === 0;
+  const hasToc = (book.toc?.length ?? 0) >= 2;
+  const docked = hasToc && tocOpen && width >= WIDE;
+  const columnWidth = Math.min(width - (docked ? SIDEBAR : 0) - 40, settings.fontSize * 34);
+  const isFirstEver = pos.block === (book.content?.start ?? 0) && pos.revealed === 0;
+  const tocIndex = hasToc ? currentTocIndex(book.toc, pos.block) : -1;
+  const chapter = tocIndex >= 0 ? book.toc[tocIndex].title : null;
+  const span = Math.max(1, bounds.end - bounds.start);
+  const bookPct = Math.min(100, Math.max(0, ((pos.block - bounds.start + 1) / span) * 100));
+  const skippedEnd = settings.skipFrontBack && book.content && book.content.end < book.blocks.length;
+
+  const tocPanel = hasToc ? <TocPanel toc={book.toc} currentIndex={tocIndex} onSelect={jumpTo} onClose={() => setTocOpen(false)} /> : null;
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background, paddingTop: insets.top }]}>
       {/* Top bar: minimal, low-contrast chrome. */}
       <View style={styles.topBar}>
         <Button label="‹ Library" kind="ghost" onPress={() => router.back()} />
-        <Text numberOfLines={1} style={[muted, styles.bookTitle]}>{book.title}</Text>
+        {hasToc && (
+          <Button
+            label="☰"
+            kind="ghost"
+            onPress={() => setTocOpen((v) => !v)}
+            accessibilityHint={tocOpen ? 'Hide table of contents' : 'Show table of contents'}
+          />
+        )}
+        <View style={styles.titleBox}>
+          <Text numberOfLines={1} style={[muted, styles.bookTitle]}>{book.title}</Text>
+          {chapter && chapter !== book.title && (
+            <Text numberOfLines={1} style={[muted, styles.chapterTitle, { color: withAlpha(theme.muted, 0.85) }]}>{chapter}</Text>
+          )}
+        </View>
         <Button label={listening ? '■ Stop' : '▶ Listen'} kind="ghost" onPress={toggleListen} accessibilityHint="Reads and reveals sentences aloud" />
         {Platform.OS === 'web' && (
           <Button label="⌨" kind="ghost" onPress={() => setShowKeys((v) => !v)} accessibilityHint="Keyboard shortcuts" />
         )}
         <Button label="Aa" kind="ghost" onPress={() => router.push('/settings')} accessibilityHint="Reading settings" />
       </View>
+      <View style={styles.body}>
+      {docked && <View style={{ width: SIDEBAR }}>{tocPanel}</View>}
+      <View style={styles.main}>
       {settings.showBookProgress && (
-        <View style={[styles.bookProgress, { backgroundColor: theme.placeholder }]} accessibilityLabel={`Book progress ${Math.round(((pos.block + 1) / book.blocks.length) * 100)} percent`}>
-          <View style={{ height: 3, backgroundColor: theme.accent, width: `${((pos.block + 1) / book.blocks.length) * 100}%` }} />
+        <View style={[styles.bookProgress, { backgroundColor: theme.placeholder }]} accessibilityLabel={`Book progress ${Math.round(bookPct)} percent`}>
+          <View style={{ height: 3, backgroundColor: theme.accent, width: `${bookPct}%` }} />
         </View>
       )}
 
@@ -355,7 +414,10 @@ export default function Reader() {
               {finished ? (
                 <View>
                   <Text style={{ color: theme.text, fontFamily: fontFamily(settings.font, true), fontSize: settings.fontSize * 1.3, marginBottom: 12 }}>You reached the end.</Text>
-                  <Text style={[muted, { fontSize: settings.fontSize }]}>Nice work. Tap the left side to look back, or return to your library.</Text>
+                  <Text style={[muted, { fontSize: settings.fontSize }]}>
+                    Nice work. Tap the left side to look back, or return to your library.
+                    {skippedEnd && hasToc ? ' Extra pages after the story (like the index or about the author) were skipped — open ☰ Contents to read them.' : ''}
+                  </Text>
                 </View>
               ) : (
                 <ParagraphView block={block} sentences={sentences} revealed={pos.revealed} settings={settings} theme={theme} />
@@ -388,6 +450,16 @@ export default function Reader() {
         </View>
         <Button label="›" kind="ghost" onPress={next} style={styles.navBtn} accessibilityHint="Next sentence" />
       </View>
+      </View>
+      </View>
+      {hasToc && tocOpen && !docked && (
+        <View style={StyleSheet.absoluteFill}>
+          <Pressable style={styles.drawerBackdrop} onPress={() => setTocOpen(false)} accessibilityRole="button" accessibilityLabel="Close contents" />
+          <View style={[styles.drawer, { width: Math.min(width * 0.86, 380), paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: theme.surface }]}>
+            {tocPanel}
+          </View>
+        </View>
+      )}
       {showKeys && (
         <Pressable style={styles.keysBackdrop} onPress={() => setShowKeys(false)} accessibilityRole="button" accessibilityLabel="Close keyboard shortcuts">
           <View style={[styles.keysPanel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -415,7 +487,13 @@ const styles = StyleSheet.create({
   keyRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, minHeight: 52 },
-  bookTitle: { flex: 1, fontSize: 15, textAlign: 'center' },
+  titleBox: { flex: 1, alignItems: 'center' },
+  bookTitle: { fontSize: 15, textAlign: 'center' },
+  chapterTitle: { fontSize: 13, textAlign: 'center', marginTop: 1 },
+  body: { flex: 1, flexDirection: 'row' },
+  main: { flex: 1 },
+  drawerBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.35)' },
+  drawer: { position: 'absolute', top: 0, bottom: 0, left: 0 },
   bookProgress: { height: 3, marginHorizontal: 16, borderRadius: 2, overflow: 'hidden' },
   banner: { flexDirection: 'row', alignItems: 'center', margin: 12, padding: 12, borderRadius: 12, borderWidth: 1, gap: 8 },
   tapArea: { flex: 1 },

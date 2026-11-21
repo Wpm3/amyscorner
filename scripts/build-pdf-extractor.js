@@ -56,6 +56,28 @@ const page = `<!doctype html><html><head><meta charset="utf-8"></head><body><scr
       try { meta = await doc.getMetadata(); } catch (e) {}
       var info = (meta && meta.info) || {};
       post({ type: 'meta', id: id, total: doc.numPages, title: info.Title || null, author: info.Author || null });
+      // Built-in bookmarks (outline) → [{ title, level, page }], used for the table of contents.
+      try {
+        var outline = await doc.getOutline();
+        var flat = [];
+        var walk = async function (items, level) {
+          for (var i = 0; i < (items || []).length && flat.length < 2000; i++) {
+            var item = items[i];
+            var page = null;
+            try {
+              var dest = item.dest;
+              if (typeof dest === 'string') dest = await doc.getDestination(dest);
+              if (Array.isArray(dest) && dest[0] != null) {
+                page = typeof dest[0] === 'number' ? dest[0] : await doc.getPageIndex(dest[0]);
+              }
+            } catch (e) {}
+            flat.push({ title: String(item.title || '').trim(), level: level, page: page });
+            await walk(item.items, level + 1);
+          }
+        };
+        await walk(outline, 1);
+        if (flat.length) post({ type: 'outline', id: id, items: flat });
+      } catch (e) {}
       var batch = [];
       for (var p = 1; p <= doc.numPages; p++) {
         var page = await doc.getPage(p);

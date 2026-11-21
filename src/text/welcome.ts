@@ -23,6 +23,8 @@ A gentle reminder will suggest a short break every twenty-five minutes. You can 
 
 Go back to the library and tap Import. You can open PDF, EPUB, Word (.docx), OpenDocument (.odt), RTF, HTML, Markdown, FB2 and plain text files. You can also paste text straight from another app.
 
+Unfold finds where the real text begins. Copyright pages, contents lists, dedications and title pages are skipped, and reading stops before the index or the about-the-author pages. If a page break cut a paragraph in two, the pieces are joined back together. Tap the ☰ button to open the table of contents, jump to any chapter, or read a skipped section anyway.
+
 Scanned PDFs that are only pictures of pages have no text to read, so they cannot be opened yet. Everything else is processed on your phone and never uploaded anywhere.
 
 Happy reading. Take it one sentence at a time.

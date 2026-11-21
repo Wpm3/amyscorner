@@ -128,7 +128,7 @@ describe('pdf layout', () => {
   it('detects headings and paragraphs, drops running footers and page numbers', () => {
     const all = texts(doc.blocks).join('\n');
     expect(all).not.toMatch(/The Sample Book/);
-    expect(doc.blocks[0]).toEqual({ kind: 'heading', level: expect.any(Number), text: 'Chapter One' });
+    expect(doc.blocks[0]).toEqual({ kind: 'heading', level: expect.any(Number), text: 'Chapter One', page: 0 });
     expect(doc.blocks.filter((b) => b.kind === 'heading').map((b) => b.text)).toEqual(['Chapter One', 'Chapter 2', 'Chapter 3', 'Chapter 4']);
     // 3 body paragraphs per chapter + the final one.
     expect(doc.blocks.filter((b) => b.kind === 'paragraph')).toHaveLength(10);

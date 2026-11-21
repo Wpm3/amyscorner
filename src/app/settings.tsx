@@ -57,6 +57,9 @@ export default function SettingsScreen() {
         <Toggle label="Reveal first sentence automatically" value={settings.autoRevealFirst} onChange={(v) => update({ autoRevealFirst: v })}
           hint="Off: each new paragraph starts fully hidden." />
 
+        <Toggle label="Skip copyright, contents and back matter" value={settings.skipFrontBack} onChange={(v) => update({ skipFrontBack: v })}
+          hint="Books open where the story starts and stop before the index or about-the-author pages. Use ☰ Contents to read skipped parts." />
+
         <SectionTitle>Sentence structure</SectionTitle>
         <Segmented label="Clauses" value={settings.clauseMode} onChange={(v) => update({ clauseMode: v })}
           options={[{ value: 'tint', label: 'Tint clauses' }, { value: 'cascade', label: 'Cascade' }, { value: 'off', label: 'Off' }]} />
