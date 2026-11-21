@@ -49,17 +49,27 @@
     "typecheck": "tsc --noEmit",
     "postinstall": "node scripts/build-pdf-extractor.js",
     "build:pdf-extractor": "node scripts/build-pdf-extractor.js",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "export:web": "expo export --platform web",
+    "desktop:prepare": "expo export --platform web && node scripts/prepare-desktop.js",
+    "desktop:start": "npm run desktop:prepare && npm --prefix desktop start",
+    "desktop:build:win": "npm run desktop:prepare && npm --prefix desktop run build:win"
   },
   "private": true,
   "jest": {
     "testEnvironment": "node",
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "/fixtures/"
+      "/fixtures/",
+      "/desktop/",
+      "/dist/"
     ],
     "transformIgnorePatterns": [
       "node_modules/(?!(htmlparser2|domhandler|domelementtype|domutils|dom-serializer|entities|fast-xml-parser|strnum|fflate)/)"
+    ],
+    "modulePathIgnorePatterns": [
+      "<rootDir>/desktop/",
+      "<rootDir>/dist/"
     ]
   }
 }

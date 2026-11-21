@@ -40,3 +40,8 @@ yarn-error.*
 /ios
 /android
 src/parsers/pdf/extractorHtml.generated.ts
+
+# Desktop (Electron)
+desktop/node_modules/
+desktop/app/
+desktop/release/

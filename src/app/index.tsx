@@ -1,9 +1,10 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../components/ui';
-import { useImporter } from '../hooks/useImporter';
+import { useFileDrop } from '../hooks/useFileDrop';
+import { useImporter, type ImportSource } from '../hooks/useImporter';
 import { addBook, deleteBook, getAllPositions, listBooks, type BookSummary, type ReadingPosition } from '../store/library';
 import { useSettings } from '../store/settings';
 import { getJson, setJson } from '../store/storage';
@@ -17,7 +18,7 @@ const FORMAT_LABEL: Record<string, string> = {
 export default function Library() {
   const { theme, settings } = useSettings();
   const insets = useSafeAreaInsets();
-  const { importFile, state } = useImporter();
+  const { importFile, importSource, state } = useImporter();
   const [books, setBooks] = useState<BookSummary[] | null>(null);
   const [positions, setPositions] = useState<Record<string, ReadingPosition>>({});
 
@@ -42,11 +43,28 @@ export default function Library() {
       const book = await importFile();
       if (book) router.push(`/reader/${book.id}`);
     } catch (e) {
-      Alert.alert('Could not open file', (e as Error).message);
+      showError(e);
     }
   };
 
+  const showError = (e: unknown) => {
+    const msg = (e as Error).message;
+    if (Platform.OS === 'web') window.alert(`Could not open file\n\n${msg}`);
+    else Alert.alert('Could not open file', msg);
+  };
+
+  const dragging = useFileDrop((src: ImportSource) => {
+    if (state.busy) return;
+    importSource(src)
+      .then((book) => router.push(`/reader/${book.id}`))
+      .catch(showError);
+  });
+
   const onLongPress = (b: BookSummary) => {
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Remove “${b.title}” from your library?`)) deleteBook(b.id).then(refresh);
+      return;
+    }
     Alert.alert(b.title, 'Remove this from your library?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: async () => { await deleteBook(b.id); refresh(); } },
@@ -58,6 +76,7 @@ export default function Library() {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background, paddingTop: insets.top + 12 }]}>
+      <View style={styles.column}>
       <View style={styles.header}>
         <Text accessibilityRole="header" style={[styles.title, { color: theme.text, fontFamily: bold }]}>Library</Text>
         <Button label="Settings" kind="ghost" onPress={() => router.push('/settings')} />
@@ -106,12 +125,26 @@ export default function Library() {
           );
         }}
       />
+      {Platform.OS === 'web' && !books?.length ? null : Platform.OS === 'web' ? (
+        <Text style={{ color: theme.muted, fontFamily: font, fontSize: 14, textAlign: 'center', paddingBottom: 16 }}>
+          Tip: drag a file onto this window to import it. Press and hold a book to remove it.
+        </Text>
+      ) : null}
+      </View>
+      {dragging && (
+        <View pointerEvents="none" style={[styles.dropOverlay, { backgroundColor: theme.background, borderColor: theme.accent }]}>
+          <Text style={{ color: theme.text, fontFamily: bold, fontSize: 24 }}>Drop to start reading</Text>
+          <Text style={{ color: theme.muted, fontFamily: font, fontSize: 16, marginTop: 8 }}>PDF, EPUB, Word, ODT, RTF, HTML, Markdown, FB2, text</Text>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, paddingHorizontal: 16 },
+  root: { flex: 1, paddingHorizontal: 16, alignItems: 'center' },
+  column: { flex: 1, width: '100%', maxWidth: 760 },
+  dropOverlay: { position: 'absolute', top: 12, left: 12, right: 12, bottom: 12, borderWidth: 3, borderStyle: 'dashed', borderRadius: 20, alignItems: 'center', justifyContent: 'center', opacity: 0.96 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { fontSize: 30 },
   actions: { flexDirection: 'row', gap: 12, marginTop: 12 },

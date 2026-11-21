@@ -1,16 +1,9 @@
-import { createContext, useCallback, useContext, useRef, useState, type ComponentType, type ReactNode, type Ref } from 'react';
+import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { WebView as RNWebView, type WebViewMessageEvent, type WebViewProps } from 'react-native-webview';
 import { pdfPagesToBlocks } from '../parsers/pdf/layout';
 import type { PdfPage } from '../parsers/pdf/types';
-import { PDF_EXTRACTOR_HTML } from '../parsers/pdf/extractorHtml.generated';
 import type { ParsedDocument } from '../text/blocks';
-
-interface WebViewHandle {
-  postMessage(data: string): void;
-}
-// react-native-webview's class typings collapse to `never` props under React 19 types; use a narrow alias.
-const WebView = RNWebView as unknown as ComponentType<WebViewProps & { ref?: Ref<WebViewHandle> }>;
+import { PdfEngineHost, type PdfEngineHandle } from './PdfEngineHost';
 
 type Progress = (done: number, total: number) => void;
 
@@ -28,11 +21,11 @@ interface Job {
 const PdfContext = createContext<((base64: string, onProgress?: Progress) => Promise<ParsedDocument>) | null>(null);
 
 /**
- * Hosts an invisible WebView running pdf.js (bundled, fully offline). The WebView
+ * Hosts an invisible WebView (iframe on desktop/web) running pdf.js (bundled, fully offline). The WebView
  * is only mounted while a PDF is being imported, so it costs nothing otherwise.
  */
 export function PdfExtractorProvider({ children }: { children: ReactNode }) {
-  const webRef = useRef<WebViewHandle>(null);
+  const webRef = useRef<PdfEngineHandle>(null);
   const jobRef = useRef<Job | null>(null);
   const readyRef = useRef(false);
   const [active, setActive] = useState(false);
@@ -51,10 +44,10 @@ export function PdfExtractorProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const onMessage = useCallback(
-    (e: WebViewMessageEvent) => {
+    (data: string) => {
       let msg: any;
       try {
-        msg = JSON.parse(e.nativeEvent.data);
+        msg = JSON.parse(data);
       } catch {
         return;
       }
@@ -110,16 +103,13 @@ export function PdfExtractorProvider({ children }: { children: ReactNode }) {
       {children}
       {active && (
         <View style={styles.hidden} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-          <WebView
+          <PdfEngineHost
             ref={webRef}
-            source={{ html: PDF_EXTRACTOR_HTML, baseUrl: 'https://localhost/' }}
-            originWhitelist={['*']}
-            javaScriptEnabled
             onMessage={onMessage}
-            onError={(ev: { nativeEvent: { description?: string } }) => {
+            onError={(message) => {
               const job = jobRef.current;
               finish();
-              job?.reject(new Error(ev.nativeEvent.description || 'PDF engine failed to start.'));
+              job?.reject(new Error(message));
             }}
           />
         </View>

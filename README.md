@@ -1,12 +1,16 @@
 # Unfold — a sentence-by-sentence reader
 
-Unfold is a reading app for **iPhone and Android** for people with ADHD, or anyone who finds dense pages hard to organise visually. It shows **one paragraph at a time**. Every sentence starts hidden, and you **tap right to reveal the next sentence** or **tap left to go back**. When a paragraph is finished, the next tap brings in a new paragraph with its text hidden again.
+Unfold is a reading app for **iPhone, Android and Windows** for people with ADHD, or anyone who finds dense pages hard to organise visually. It shows **one paragraph at a time**. Every sentence starts hidden, and you **tap right to reveal the next sentence** or **tap left to go back**. When a paragraph is finished, the next tap brings in a new paragraph with its text hidden again.
 
 Inside the sentence you're reading, the clauses are made visible: either alternating tints, or a "cascade" layout with one clause per line.
 
 | Reveal + clause tint | Cascade (dark) | "Bars" for unrevealed text | Settings |
 |---|---|---|---|
 | ![](docs/screenshots/reveal-tint.png) | ![](docs/screenshots/cascade-dark.png) | ![](docs/screenshots/bars.png) | ![](docs/screenshots/settings.png) |
+
+On Windows, the desktop app looks like this:
+
+![Unfold on Windows](docs/screenshots/windows-reader.png)
 
 ## Supported documents
 PDF (text-based), EPUB, Word `.docx`, OpenDocument `.odt`, RTF, HTML/XHTML, Markdown, FB2 and plain text. You can also paste text. Everything is parsed **on the device**, and nothing is uploaded.
@@ -60,7 +64,9 @@ src/app/            screens: library (index), reader/[id], settings, paste
 src/components/     ParagraphView (reveal rendering), PdfExtractor (hidden WebView), ui
 src/parsers/        txt, markdown, html, epub, docx/odt, rtf, fb2, pdf/{layout,types}
 src/text/           segment (sentences/clauses), paragraph, navigation (tap logic), welcome guide
-src/store/          settings, library + reading positions
+src/store/          settings, library + reading positions (*.web.ts = desktop/web storage)
+src/hooks/          importer, file drop + keyboard shortcuts (desktop), asset readers
+desktop/            Electron shell for Windows/macOS/Linux (main.js, build config, icons)
 __tests__/          Jest tests for segmentation, every parser, PDF layout and tap navigation
 ```
 
@@ -82,6 +88,27 @@ npx eas-cli@latest build -p ios --profile production    # needs an Apple Develop
 npx eas-cli@latest submit -p ios                        # upload to TestFlight / App Store
 ```
 The bundle ID and package name are `com.amyscorner.unfold` (set in `app.json`).
+
+## Windows app
+The Windows version is the same app wrapped in [Electron](https://www.electronjs.org/) (`desktop/`). It shares every parser, the segmenter and the reader with the phone apps.
+
+Desktop additions:
+- **Keyboard:** `→` / `Space` / `Enter` for the next sentence, `←` / `Backspace` to go back, `A` to reveal the whole paragraph, `L` to listen, `Esc` to return to the library. `Ctrl +` / `Ctrl −` zooms and `F11` is full screen.
+- **Drag and drop** a document onto the window to import it.
+- **Mouse:** click the right or left side of the page, the same as tapping on a phone.
+- **Storage:** books are kept in IndexedDB, and settings and positions in local storage, under the app's own `app://` origin. Everything persists between launches.
+- **PDFs:** pdf.js runs in a hidden same-origin iframe, the same offline engine the phones use.
+
+Build it:
+```bash
+npm run desktop:start          # run the desktop app locally
+npm run desktop:build:win      # Windows installer (.exe), portable .exe and .zip in desktop/release/
+```
+The NSIS installer step needs Windows, or Wine on Linux and macOS. The **"Windows build" GitHub Action** (`.github/workflows/windows.yml`) builds all three Windows packages on a Windows runner. Run it from the Actions tab, or push a `v*` tag, and download the files from the run's artifacts.
+
+The same shell also builds for macOS (`dmg`) and Linux (`AppImage`) with `npx electron-builder --mac` or `--linux`.
+
+The builds are **unsigned**, so Windows SmartScreen will show "Windows protected your PC". Click *More info → Run anyway*. Add a code-signing certificate to `desktop/package.json` to remove that warning.
 
 ## Known limits
 - Scanned (image-only) PDFs have no text layer; OCR isn't included.

@@ -5,6 +5,7 @@ import * as Speech from 'expo-speech';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
+  Platform,
   ActivityIndicator,
   Animated,
   Pressable,
@@ -18,6 +19,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ParagraphView } from '../../components/ParagraphView';
+import { useReaderKeys } from '../../hooks/useReaderKeys';
 import { Button } from '../../components/ui';
 import { getPosition, loadBook, savePosition } from '../../store/library';
 import { useSettings } from '../../store/settings';
@@ -28,7 +30,17 @@ import { withAlpha } from '../../theme/color';
 import { fontFamily } from '../../theme/fonts';
 
 const TAP_DEBOUNCE_MS = 180;
+const HAS_HAPTICS = Platform.OS === 'ios' || Platform.OS === 'android';
 const BACK_ZONE = 0.35; // left 35% of the screen goes back
+function hintText(layout: 'zones' | 'anywhere'): string {
+  const desktop = Platform.OS === 'web';
+  const tap = desktop ? 'Click' : 'Tap';
+  if (layout === 'anywhere') return `${tap} anywhere${desktop ? ' (or press Space)' : ''} to reveal the next sentence. Press and hold to show the whole paragraph.`;
+  return desktop
+    ? 'Click the right side, or press → / Space, to reveal the next sentence. Click the left side, or press ←, to go back. Press A to show the whole paragraph.'
+    : 'Tap the right side to reveal the next sentence. Tap the left side to go back. Press and hold to show the whole paragraph.';
+}
+
 const RECAP_AFTER_MS = 12 * 60 * 60 * 1000;
 
 export default function Reader() {
@@ -147,14 +159,14 @@ export default function Reader() {
     if (r.event === 'end') {
       setFinished(true);
       setListening(false);
-      if (settings.haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      if (settings.haptics && HAS_HAPTICS) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       return;
     }
     if (r.event === 'newParagraph') {
       animateIn();
       scrollRef.current?.scrollTo({ y: 0, animated: false });
-      if (settings.haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    } else if (settings.haptics) {
+      if (settings.haptics && HAS_HAPTICS) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    } else if (settings.haptics && HAS_HAPTICS) {
       Haptics.selectionAsync().catch(() => {});
     }
     setPos(r.pos);
@@ -168,13 +180,13 @@ export default function Reader() {
     const r = stepBack(pos, count, settings.autoRevealFirst);
     if (r.event === 'start') return;
     if (r.event === 'prevParagraph') animateIn();
-    if (settings.haptics) Haptics.selectionAsync().catch(() => {});
+    if (settings.haptics && HAS_HAPTICS) Haptics.selectionAsync().catch(() => {});
     setPos(r.pos);
   }, [book, pos, count, settings.autoRevealFirst, settings.haptics, animateIn]);
 
   const revealAll = useCallback(() => {
     if (!book) return;
-    if (settings.haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    if (settings.haptics && HAS_HAPTICS) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setPos((p) => ({ ...p, revealed: count(p.block) }));
   }, [book, count, settings.haptics]);
 
@@ -227,6 +239,8 @@ export default function Reader() {
       else next();
     }
   };
+
+  useReaderKeys({ next, back, revealAll, toggleListen, exit: () => router.back() });
 
   const font = fontFamily(settings.font);
   const muted = { color: theme.muted, fontFamily: font };
@@ -327,7 +341,7 @@ export default function Reader() {
             </Animated.View>
             {isFirstEver && !recap && (
               <Text style={[muted, styles.hint, { width: columnWidth }]}>
-                {settings.tapLayout === 'zones' ? 'Tap the right side to reveal the next sentence. Tap the left side to go back. Press and hold to show the whole paragraph.' : 'Tap anywhere to reveal the next sentence. Press and hold to show the whole paragraph.'}
+                {hintText(settings.tapLayout)}
               </Text>
             )}
           </Pressable>

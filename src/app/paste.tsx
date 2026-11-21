@@ -20,7 +20,8 @@ export default function Paste() {
       const book = await importText(text, title);
       router.replace(`/reader/${book.id}`);
     } catch (e) {
-      Alert.alert('Could not save', (e as Error).message);
+      if (Platform.OS === 'web') window.alert((e as Error).message);
+      else Alert.alert('Could not save', (e as Error).message);
     }
   };
 

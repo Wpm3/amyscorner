@@ -23,6 +23,7 @@ const page = `<!doctype html><html><head><meta charset="utf-8"></head><body><scr
     var s = JSON.stringify(msg);
     if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(s);
     else if (window.__onPdfMessage) window.__onPdfMessage(s);
+    else if (window.parent && window.parent !== window) window.parent.postMessage({ __unfoldPdf: true, payload: s }, '*');
   }
   var libPromise = null;
   function loadLib() {
