@@ -45,3 +45,9 @@ src/parsers/pdf/extractorHtml.generated.ts
 desktop/node_modules/
 desktop/app/
 desktop/release/
+desktop-lite/node_modules/
+desktop-lite/app/
+desktop-lite/bin/
+desktop-lite/dist/
+desktop-lite/.tmp/
+release-out/

@@ -1,0 +1,17 @@
+{
+  "name": "unfold-desktop-lite",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Small Windows build of Unfold using the system WebView2 (Neutralinojs)",
+  "scripts": {
+    "update": "neu update",
+    "build": "node build.mjs",
+    "start": "neu run",
+    "build:raw": "neu build --release --embed-resources"
+  },
+  "devDependencies": {
+    "@neutralinojs/neu": "^11.8.0",
+    "pe-library": "^1.0.1",
+    "resedit": "^2.0.3"
+  }
+}

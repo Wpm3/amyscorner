@@ -6,6 +6,27 @@ on:
     tags: ['v*']
 
 jobs:
+  build-windows-lite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Build lite Windows app (Neutralinojs + WebView2)
+        run: |
+          npx expo export --platform web
+          npm --prefix desktop-lite ci
+          npm --prefix desktop-lite run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Unfold-Windows-Lite
+          path: desktop-lite/dist/Unfold/Unfold.exe
+          if-no-files-found: error
+
   build-windows:
     runs-on: windows-latest
     steps:

@@ -53,7 +53,8 @@
     "export:web": "expo export --platform web",
     "desktop:prepare": "expo export --platform web && node scripts/prepare-desktop.js",
     "desktop:start": "npm run desktop:prepare && npm --prefix desktop start",
-    "desktop:build:win": "npm run desktop:prepare && npm --prefix desktop run build:win"
+    "desktop:build:win": "npm run desktop:prepare && npm --prefix desktop run build:win",
+    "desktop:build:win:lite": "expo export --platform web && npm --prefix desktop-lite run build"
   },
   "private": true,
   "jest": {

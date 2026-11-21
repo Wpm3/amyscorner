@@ -99,7 +99,19 @@ Desktop additions:
 - **Storage:** books are kept in IndexedDB, and settings and positions in local storage, under the app's own `app://` origin. Everything persists between launches.
 - **PDFs:** pdf.js runs in a hidden same-origin iframe, the same offline engine the phones use.
 
-Build it:
+There are two Windows builds:
+
+| Build | Size | Engine | Notes |
+|---|---|---|---|
+| **Lite** (`desktop-lite/`, Neutralinojs) | **~2 MB zip, single `Unfold.exe`** | The Microsoft Edge WebView2 built into Windows 10/11 | Recommended download. Your data is stored in an `Unfold.exe.WebView2` folder next to the exe. It uses local port 47781. |
+| Full (`desktop/`, Electron) | ~150 MB | Bundled Chromium | Includes an installer and a menu bar. It doesn't depend on WebView2 being present. |
+
+Build the lite version (this works from Linux, macOS or Windows, and needs no Wine):
+```bash
+npm run desktop:build:win:lite   # → desktop-lite/dist/Unfold/Unfold.exe
+```
+
+Build the full Electron version:
 ```bash
 npm run desktop:start          # run the desktop app locally
 npm run desktop:build:win      # Windows installer (.exe), portable .exe and .zip in desktop/release/

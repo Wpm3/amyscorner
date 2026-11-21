@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/neutralinojs/neutralinojs/main/schemas/neutralino.config.schema.json",
+  "applicationId": "com.amyscorner.unfold.lite",
+  "version": "1.0.0",
+  "defaultMode": "window",
+  "port": 47781,
+  "documentRoot": "/app/",
+  "url": "/",
+  "enableServer": true,
+  "enableNativeAPI": false,
+  "tokenSecurity": "one-time",
+  "logging": { "enabled": false, "writeToLogFile": false },
+  "nativeAllowList": [],
+  "modes": {
+    "window": {
+      "title": "Unfold",
+      "width": 1100,
+      "height": 820,
+      "minWidth": 420,
+      "minHeight": 520,
+      "center": true,
+      "resizable": true,
+      "icon": "/app/icon.png",
+      "enableInspector": false,
+      "useSavedState": true
+    }
+  },
+  "cli": {
+    "binaryName": "Unfold",
+    "resourcesPath": "/app/",
+    "extensionsPath": "/extensions/",
+    "binaryVersion": "6.7.0",
+    "clientVersion": "6.7.0",
+    "frontendLibrary": {}
+  }
+}
