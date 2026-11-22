@@ -149,6 +149,16 @@ npx eas-cli@latest submit -p ios                        # upload to TestFlight /
 ```
 The bundle ID and package name are `com.amyscorner.unfold` (set in `app.json`).
 
+### Android APK without an Expo account
+The **"Android build" GitHub Action** (`.github/workflows/android.yml`) builds `Unfold.apk` on a Linux runner. Run it from the Actions tab, or push a `v*` tag, and download the APK from the run's artifacts. To install it, copy it to your phone, open it, and allow "Install unknown apps" for your file manager or browser when Android asks.
+
+To build the same APK locally, you need the Android SDK (Android Studio) and JDK 17+:
+```bash
+npx expo prebuild --platform android   # generates android/ from app.json (not committed)
+cd android && ./gradlew assembleRelease # → android/app/build/outputs/apk/release/app-release.apk
+```
+This APK is signed with the debug key, which is fine for sideloading. Play Store uploads need EAS or your own keystore.
+
 ## Windows app
 The Windows version is the same app wrapped in [Electron](https://www.electronjs.org/) (`desktop/`). It shares every parser, the segmenter and the reader with the phone apps.
 
