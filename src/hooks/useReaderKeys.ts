@@ -6,6 +6,7 @@ export interface ReaderKeyHandlers {
   toggleListen: () => void;
   showHelp: () => void;
   toggleContents: () => void;
+  toggleFocus: () => void;
 }
 
 /** Keyboard shortcuts exist on desktop/web only. */

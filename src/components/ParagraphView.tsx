@@ -2,7 +2,8 @@ import { memo, type ReactNode } from 'react';
 import { Platform, StyleSheet, Text, View, type TextStyle } from 'react-native';
 import type { Settings } from '../store/settings';
 import type { Block } from '../text/blocks';
-import { fixationSplit, type Sentence } from '../text/paragraph';
+import type { ClausePart } from '../text/clauses';
+import { fixationSplit, sentenceState, type Sentence, type SentenceState } from '../text/paragraph';
 import { withAlpha } from '../theme/color';
 import { fontFamily } from '../theme/fonts';
 import type { Theme } from '../theme/themes';
@@ -16,14 +17,14 @@ interface Props {
   theme: Theme;
 }
 
-type State = 'past' | 'current' | 'hidden';
-
 const FADED_ALPHA = 0.16;
 
 /**
  * Renders one paragraph with every sentence laid out from the start (so nothing
  * reflows as you tap), but only revealed sentences are readable. The current
- * sentence is emphasised and its clauses are separated to show structure.
+ * sentence is emphasised and its clauses coloured: each clause keeps one colour
+ * even when an aside interrupts it, and asides get their own colour.
+ * Focus mode (eye button) conceals every sentence except the current one.
  */
 function ParagraphViewInner({ block, sentences, revealed, settings, theme }: Props) {
   const isHeading = block.kind === 'heading';
@@ -38,26 +39,34 @@ function ParagraphViewInner({ block, sentences, revealed, settings, theme }: Pro
     textAlign: 'left',
   };
   const boldFamily = fontFamily(settings.font, true);
+  const clausesOn = settings.clauseMode !== 'off' && !isHeading && block.kind !== 'code';
 
-  const stateOf = (i: number): State => (i < revealed - 1 ? 'past' : i === revealed - 1 ? 'current' : 'hidden');
-
-  const sentenceStyle = (state: State): TextStyle => {
-    if (state === 'past') return { color: withAlpha(theme.text, settings.pastOpacity) };
-    if (state === 'current') return settings.highlightCurrent ? { backgroundColor: theme.highlight } : {};
-    switch (settings.unrevealed) {
-      case 'bars':
-        return { color: 'transparent', backgroundColor: theme.placeholder };
-      case 'hidden':
+  const sentenceStyle = (state: SentenceState): TextStyle => {
+    switch (state) {
+      case 'past':
+        return { color: withAlpha(theme.text, settings.pastOpacity) };
+      case 'current':
+        return settings.highlightCurrent ? { backgroundColor: theme.highlight } : {};
+      case 'concealed':
         return { color: 'transparent' };
-      case 'faded':
+      case 'hidden':
       default:
+        if (settings.unrevealed === 'bars') return { color: 'transparent', backgroundColor: theme.placeholder };
+        if (settings.unrevealed === 'hidden') return { color: 'transparent' };
         return { color: withAlpha(theme.text, FADED_ALPHA) };
     }
   };
 
+  /** Clause colour: the clause's alternating colour, or the aside colour. Current sentence only. */
+  const partColor = (state: SentenceState, part: ClausePart): TextStyle | null => {
+    if (state !== 'current' || !clausesOn) return null;
+    if (part.role === 'aside') return { color: theme.clauseAside };
+    return part.group % 2 === 1 ? { color: theme.clauseAlt } : null;
+  };
+
   /** Words with an optional bold fixation prefix (only for readable text). */
-  const renderWords = (text: string, state: State, key: string): ReactNode => {
-    if (!settings.fixationBold || state === 'hidden' || isHeading || block.kind === 'code') return text;
+  const renderWords = (text: string, state: SentenceState, key: string): ReactNode => {
+    if (!settings.fixationBold || state === 'hidden' || state === 'concealed' || isHeading || block.kind === 'code') return text;
     return text.split(/(\s+)/).map((w, j) => {
       if (!w.trim()) return w;
       const [head, tail] = fixationSplit(w);
@@ -70,30 +79,30 @@ function ParagraphViewInner({ block, sentences, revealed, settings, theme }: Pro
     });
   };
 
-  const clauseColor = (state: State, k: number) =>
-    state === 'current' && settings.clauseMode !== 'off' && k % 2 === 1 ? { color: theme.clauseAlt } : null;
-
   const prefix = block.kind === 'list' ? '•  ' : '';
   const containerStyle = [
     block.kind === 'quote' && { borderLeftWidth: 3, borderLeftColor: theme.border, paddingLeft: 14 },
     block.kind === 'code' && { backgroundColor: theme.surface, padding: 12, borderRadius: 8 },
   ];
 
-  if (settings.clauseMode === 'cascade' && !isHeading && block.kind !== 'code') {
-    // Visual-syntactic cascade: each sentence is a group, each clause its own line,
-    // continuation clauses indented. Layout is identical revealed or not.
+  if (settings.clauseMode === 'cascade' && clausesOn) {
+    // Visual-syntactic cascade: each clause part on its own line. Continuations
+    // are indented one step, asides two, so the main line of thought stays left.
     return (
       <View style={containerStyle}>
         {sentences.map((s, i) => {
-          const state = stateOf(i);
+          const state = sentenceState(i, revealed, settings.focusSentence);
           return (
             <View key={i} style={styles.cascadeSentence}>
-              {s.clauses.map((c, k) => (
-                <Text key={k} style={[base, { paddingLeft: k === 0 ? 0 : baseSize * 1.2 }]}>
-                  {i === 0 && k === 0 ? prefix : ''}
-                  <Text style={[sentenceStyle(state), clauseColor(state, k)]}>{renderWords(c, state, `${i}-${k}`)}</Text>
-                </Text>
-              ))}
+              {s.parts.map((part, k) => {
+                const indent = part.role === 'aside' ? 2 : k === 0 ? 0 : 1;
+                return (
+                  <Text key={k} style={[base, { paddingLeft: indent * baseSize * 1.2 }]}>
+                    {i === 0 && k === 0 ? prefix : ''}
+                    <Text style={[sentenceStyle(state), partColor(state, part)]}>{renderWords(part.text, state, `${i}-${k}`)}</Text>
+                  </Text>
+                );
+              })}
             </View>
           );
         })}
@@ -106,20 +115,19 @@ function ParagraphViewInner({ block, sentences, revealed, settings, theme }: Pro
       <Text style={base} accessibilityRole={isHeading ? 'header' : 'text'}>
         {prefix}
         {sentences.map((s, i) => {
-          const state = stateOf(i);
-          const style = sentenceStyle(state);
-          const parts =
-            state === 'current' && settings.clauseMode === 'tint' && s.clauses.length > 1
-              ? s.clauses.map((c, k) => (
-                  <Text key={k} style={clauseColor(state, k)}>
-                    {renderWords(c, state, `${i}-${k}`)}
-                    {k < s.clauses.length - 1 ? ' ' : ''}
-                  </Text>
-                ))
-              : renderWords(s.text, state, `${i}`);
+          const state = sentenceState(i, revealed, settings.focusSentence);
+          const colourParts = state === 'current' && clausesOn && s.parts.length > 1;
+          const content = colourParts
+            ? s.parts.map((part, k) => (
+                <Text key={k} style={partColor(state, part)}>
+                  {renderWords(part.text, state, `${i}-${k}`)}
+                  {part.space ? ' ' : ''}
+                </Text>
+              ))
+            : renderWords(s.text, state, `${i}`);
           return (
             <Text key={i}>
-              <Text style={style}>{parts}</Text>
+              <Text style={sentenceStyle(state)}>{content}</Text>
               {i < sentences.length - 1 ? ' ' : ''}
             </Text>
           );

@@ -10,6 +10,7 @@ import type { ReaderKeyHandlers } from './useReaderKeys';
  *   Esc                               back to library
  *   ? / F1                            keyboard shortcuts
  *   C                                 table of contents
+ *   H                                 hide / show other sentences
  */
 export function useReaderKeys(h: ReaderKeyHandlers): void {
   const ref = useRef(h);
@@ -31,6 +32,7 @@ export function useReaderKeys(h: ReaderKeyHandlers): void {
       else if (k === 'l') ref.current.toggleListen();
       else if (k === '?' || k === 'F1') ref.current.showHelp();
       else if (k === 'c') ref.current.toggleContents();
+      else if (k === 'h') ref.current.toggleFocus();
       else if (k === 'Escape') ref.current.exit();
       else handled = false;
       if (handled) e.preventDefault();

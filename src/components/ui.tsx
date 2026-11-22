@@ -64,6 +64,7 @@ export function Segmented<T extends string | number>({
             key={String(o.value)}
             accessibilityRole="radio"
             accessibilityState={{ selected }}
+            aria-checked={selected}
             accessibilityLabel={`${label}: ${o.label}`}
             onPress={() => onChange(o.value)}
             style={[
@@ -136,6 +137,7 @@ export function Toggle({ label, value, onChange, hint }: { label: string; value:
     <Pressable
       accessibilityRole="switch"
       accessibilityState={{ checked: value }}
+      aria-checked={value}
       accessibilityHint={hint}
       onPress={() => onChange(!value)}
       style={styles.toggleRow}

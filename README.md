@@ -52,6 +52,26 @@ Every format then gets a merge pass. It joins a paragraph that doesn't end a sen
 |---|---|
 | ![](docs/screenshots/contents-phone.png) | ![](docs/screenshots/contents-desktop.png) |
 
+## Focus mode and clause colours
+**Focus mode** (the eye button at the top of the reader, or `H` on desktop) hides every sentence except the one you're reading. The hidden sentences keep their place, so nothing moves when you tap. Tap the eye again to see the paragraph. It's also under Settings → *Show only the current sentence*.
+
+**Clause colours** (Settings → *Break sentences into clauses*) colour the sentence you're reading by its structure (`src/text/clauses.ts`):
+- **Asides are found and coloured on their own.** These are phrases that interrupt a sentence, set off by a pair of commas, dashes or brackets.
+- **A clause keeps one colour when an aside cuts it in two.** In "I think that, *on a good day*, it's good to be interesting", "I think that, … it's good to be interesting" is one colour and "on a good day" another.
+- **Separate clauses alternate colours.** Clauses joined by "but", "and", "although" and so on take turns.
+- **Guards stop false asides**, so these aren't coloured as asides:
+  - lists ("eggs, milk, bread, and butter")
+  - opening phrases ("In 1931,")
+  - full clauses ("it was the worst of times")
+  - numbers like 1,000
+- **Two layouts.** *Colours* keeps the paragraph shape. *One per line* puts each part on its own line, with asides indented further.
+
+**Colour checks:** each theme's three clause colours were checked together with the dataviz palette script, for colour-blindness separation and normal-vision distance. Each reaches at least 5.5:1 contrast on the page and on the highlight. This also fixed the dark and night themes, where the second clause colour was barely different from normal text.
+
+| Clause colours | Focus mode |
+|---|---|
+| ![](docs/screenshots/clauses-asides.png) | ![](docs/screenshots/focus-mode.png) |
+
 ## Progress bars
 The bottom of the reader shows two progress bars:
 1. **Chapter progress**, labelled "Chapter 2 of 3".
@@ -153,7 +173,7 @@ The bundle ID and package name are `com.amyscorner.unfold` (set in `app.json`).
 The Windows version is the same app wrapped in [Electron](https://www.electronjs.org/) (`desktop/`). It shares every parser, the segmenter and the reader with the phone apps.
 
 Desktop additions:
-- **Keyboard:** `→` / `Space` / `Enter` for the next sentence, `←` / `Backspace` to go back, `A` to reveal the whole paragraph, `L` to listen, `C` for the table of contents, `?` or `F1` for a shortcuts panel (also the ⌨ button), `Esc` to return to the library. `Ctrl +` / `Ctrl −` zooms and `F11` is full screen.
+- **Keyboard:** `→` / `Space` / `Enter` for the next sentence, `←` / `Backspace` to go back, `A` to reveal the whole paragraph, `L` to listen, `C` for the table of contents, `H` to hide/show other sentences, `?` or `F1` for a shortcuts panel (also the ⌨ button), `Esc` to return to the library. `Ctrl +` / `Ctrl −` zooms and `F11` is full screen.
 - **Drag and drop** a document onto the window to import it.
 - **Mouse:** click the right or left side of the page, the same as tapping on a phone.
 - **Storage:** books are kept in IndexedDB, and settings and positions in local storage, under the app's own `app://` origin. Everything persists between launches.

@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -52,6 +53,7 @@ const KEYS: [string, string][] = [
   ['F11', 'Full screen'],
   ['Ctrl +  /  Ctrl −', 'Bigger / smaller'],
   ['C', 'Table of contents'],
+  ['H', 'Hide / show other sentences'],
   ['?  or  F1', 'Show these shortcuts'],
   ['Esc', 'Back to library'],
 ];
@@ -82,7 +84,7 @@ const useReaderAwake: () => void = Platform.OS === 'web' ? () => {} : useKeepAwa
 export default function Reader() {
   useReaderAwake();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { settings, theme } = useSettings();
+  const { settings, theme, update } = useSettings();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
@@ -304,6 +306,7 @@ export default function Reader() {
     revealAll,
     toggleListen,
     showHelp: () => setShowKeys((v) => !v),
+    toggleFocus: () => update({ focusSentence: !settings.focusSentence }),
     toggleContents: () => setTocOpen((v) => !v),
     exit: () => (showKeys ? setShowKeys(false) : tocOpen ? setTocOpen(false) : router.back()),
   });
@@ -351,7 +354,7 @@ export default function Reader() {
     <View style={[styles.root, { backgroundColor: theme.background, paddingTop: insets.top }]}>
       {/* Top bar: minimal, low-contrast chrome. */}
       <View style={styles.topBar}>
-        <Button label="‹ Library" kind="ghost" onPress={() => router.back()} />
+        <Button label={narrow ? '‹' : '‹ Library'} kind="ghost" onPress={() => router.back()} accessibilityHint="Back to library" />
         {hasToc && (
           <Button
             label="☰"
@@ -375,6 +378,18 @@ export default function Reader() {
         {Platform.OS === 'web' && !narrow && (
           <Button label="⌨" kind="ghost" onPress={() => setShowKeys((v) => !v)} accessibilityHint="Keyboard shortcuts" />
         )}
+        <Pressable
+          onPress={() => update({ focusSentence: !settings.focusSentence })}
+          accessibilityRole="switch"
+          accessibilityLabel="Show only the current sentence"
+          accessibilityState={{ checked: settings.focusSentence }}
+          aria-checked={settings.focusSentence}
+          accessibilityHint={settings.focusSentence ? 'Shows the other sentences again' : 'Hides every sentence except the one you are reading'}
+          hitSlop={6}
+          style={({ pressed }) => [styles.iconBtn, settings.focusSentence && { backgroundColor: theme.highlight }, { opacity: pressed ? 0.6 : 1 }]}
+        >
+          <Ionicons name={settings.focusSentence ? 'eye-off-outline' : 'eye-outline'} size={24} color={theme.text} />
+        </Pressable>
         <Button label="Aa" kind="ghost" onPress={() => router.push('/settings')} accessibilityHint="Reading settings" />
       </View>
       <View style={styles.body}>
@@ -517,6 +532,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   topBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, minHeight: 52 },
   titleBox: { flex: 1, alignItems: 'center' },
+  iconBtn: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   bookTitle: { fontSize: 15, textAlign: 'center' },
   chapterTitle: { fontSize: 13, textAlign: 'center', marginTop: 1 },
   body: { flex: 1, flexDirection: 'row' },

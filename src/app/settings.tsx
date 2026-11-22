@@ -12,7 +12,7 @@ import { THEMES, type ThemeName } from '../theme/themes';
 
 const PREVIEW: Block = {
   kind: 'paragraph',
-  text: 'Reading gets easier when there is less to look at. Although the whole paragraph is laid out, only what you have revealed is readable, so your eyes always know where to go. The next sentence waits until you tap.',
+  text: "Reading gets easier when there is less to look at. I think that, on a good day, it's good to be interesting, but it's better to be kind. The next sentence waits until you tap.",
 };
 
 export default function SettingsScreen() {
@@ -54,6 +54,8 @@ export default function SettingsScreen() {
         <Segmented label="Already read" value={settings.pastOpacity} onChange={(v) => update({ pastOpacity: v })}
           options={[{ value: 1, label: 'Full' }, { value: 0.65, label: 'Softer' }, { value: 0.45, label: 'Faint' }]} />
         <Toggle label="Highlight current sentence" value={settings.highlightCurrent} onChange={(v) => update({ highlightCurrent: v })} />
+        <Toggle label="Show only the current sentence" value={settings.focusSentence} onChange={(v) => update({ focusSentence: v })}
+          hint="Hides every other sentence. You can also use the eye button while reading." />
         <Toggle label="Reveal first sentence automatically" value={settings.autoRevealFirst} onChange={(v) => update({ autoRevealFirst: v })}
           hint="Off: each new paragraph starts fully hidden." />
 
@@ -61,11 +63,19 @@ export default function SettingsScreen() {
           hint="Books open where the story starts and stop before the index or about-the-author pages. Use ☰ Contents to read skipped parts." />
 
         <SectionTitle>Sentence structure</SectionTitle>
-        <Segmented label="Clauses" value={settings.clauseMode} onChange={(v) => update({ clauseMode: v })}
-          options={[{ value: 'tint', label: 'Tint clauses' }, { value: 'cascade', label: 'Cascade' }, { value: 'off', label: 'Off' }]} />
-        <Text style={{ color: theme.muted, fontFamily: fontFamily(settings.font), fontSize: 14, marginTop: 8 }}>
-          Tint alternates colour between clauses of the current sentence. Cascade puts each clause on its own indented line.
-        </Text>
+        <Toggle
+          label="Break sentences into clauses"
+          value={settings.clauseMode !== 'off'}
+          onChange={(v) => update({ clauseMode: v ? 'tint' : 'off' })}
+          hint="Colours each part of the sentence you're reading. Interruptions like “on a good day” get their own colour, and the clause around them keeps one colour."
+        />
+        {settings.clauseMode !== 'off' && (
+          <>
+            <Text style={[label, styles.gap]}>Show clauses as</Text>
+            <Segmented label="Show clauses as" value={settings.clauseMode} onChange={(v) => update({ clauseMode: v })}
+              options={[{ value: 'tint', label: 'Colours' }, { value: 'cascade', label: 'One per line' }]} />
+          </>
+        )}
         <Toggle label="Bold word beginnings" value={settings.fixationBold} onChange={(v) => update({ fixationBold: v })}
           hint="Some people like it; research hasn’t shown a speed benefit." />
 

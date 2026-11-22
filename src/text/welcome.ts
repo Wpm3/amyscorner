@@ -9,7 +9,11 @@ When you finish a paragraph, the next tap brings in a fresh one. Its text starts
 
 The sentence you are reading gets a soft highlight. Long sentences are broken into clauses, and every other clause is tinted, so you can see where one idea ends and the next one begins.
 
-If colours are not enough, open Settings and choose the cascade layout. Each clause then sits on its own line, and follow-on clauses are indented, which makes the shape of a sentence easy to see at a glance.
+When a phrase interrupts a sentence, like this one does, it gets its own colour, and the sentence around it keeps a single colour, so you can follow the main thought.
+
+Tap the eye button at the top to hide every sentence except the one you are reading. Tap it again to bring the rest back.
+
+If colours are not enough, open Settings and choose to show each clause on its own line. Each clause then sits on its own line, and follow-on clauses are indented, which makes the shape of a sentence easy to see at a glance.
 
 ## Making it yours
 

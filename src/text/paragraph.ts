@@ -1,17 +1,21 @@
 import type { Block } from './blocks';
+import { analyzeClauses, type ClausePart } from './clauses';
 import { splitClauses, splitSentences } from './segment';
 
 export interface Sentence {
   text: string;
   clauses: string[];
+  /** Clause structure with interrupting asides, for colouring and cascade layout. */
+  parts: ClausePart[];
 }
 
 /** Split a block into sentences (and each sentence into clauses) for revealing. */
 export function segmentBlock(block: Block): Sentence[] {
-  if (block.kind === 'heading' || block.kind === 'code') return [{ text: block.text, clauses: [block.text] }];
+  const whole = (text: string): Sentence => ({ text, clauses: [text], parts: [{ text, role: 'main', group: 0, space: false }] });
+  if (block.kind === 'heading' || block.kind === 'code') return [whole(block.text)];
   const sentences = splitSentences(block.text);
-  if (!sentences.length) return [{ text: block.text, clauses: [block.text] }];
-  return sentences.map((s) => ({ text: s, clauses: splitClauses(s) }));
+  if (!sentences.length) return [whole(block.text)];
+  return sentences.map((s) => ({ text: s, clauses: splitClauses(s), parts: analyzeClauses(s) }));
 }
 
 /**
@@ -29,3 +33,16 @@ export function fixationSplit(word: string): [string, string] {
 }
 
 const isWordChar = (c: string) => c.toLowerCase() !== c.toUpperCase() || (c >= '0' && c <= '9');
+
+/**
+ * How sentence `i` is drawn when `revealed` sentences are shown.
+ * past: already read · current: the active sentence · hidden: not reached yet
+ * (drawn faint/bars/blank per settings) · concealed: focus mode — invisible.
+ */
+export type SentenceState = 'past' | 'current' | 'hidden' | 'concealed';
+
+export function sentenceState(i: number, revealed: number, focusOnly: boolean): SentenceState {
+  if (i === revealed - 1) return 'current';
+  if (focusOnly) return 'concealed';
+  return i < revealed - 1 ? 'past' : 'hidden';
+}

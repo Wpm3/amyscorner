@@ -32,6 +32,8 @@ export interface Settings {
   progressBars: ProgressBars;
   breakReminderMinutes: number; // 0 = off
   autoRevealFirst: boolean;
+  /** Focus mode (eye button): hide every sentence except the one being read. */
+  focusSentence: boolean;
   /** Start at the real text and stop before back matter (copyright, contents, index…). */
   skipFrontBack: boolean;
 }
@@ -56,6 +58,7 @@ export const DEFAULT_SETTINGS: Settings = {
   progressBars: 'both',
   breakReminderMinutes: 25,
   autoRevealFirst: false,
+  focusSentence: false,
   skipFrontBack: true,
 };
 
