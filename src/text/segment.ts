@@ -14,7 +14,6 @@ const ABBR_BEFORE_NUM = new Set([
 const ABBR_MAY_END = new Set(['etc', 'inc', 'ltd', 'co', 'corp', 'jr', 'sr', 'a.m', 'p.m', 'u.s', 'u.k', 'ph.d']);
 
 const OPENERS = '"\'“‘([{«';
-const CLOSERS = '"\'”’)]}»';
 const isUpper = (c: string) => c !== c.toLowerCase() && c === c.toUpperCase();
 const isDigit = (c: string) => c >= '0' && c <= '9';
 const PROTECTED = /\b(?:https?:\/\/|www\.)\S+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g; // URLs, emails
@@ -22,7 +21,7 @@ const PROTECTED = /\b(?:https?:\/\/|www\.)\S+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g; //
 export function splitSentences(paragraph: string): string[] {
   const text = paragraph.replace(/\s+/g, ' ').trim();
   if (!text) return [];
-  const shield: Array<[number, number]> = [];
+  const shield: [number, number][] = [];
   for (const m of text.matchAll(PROTECTED)) {
     // A URL/email may still be followed by a real full stop: leave trailing punctuation unshielded.
     const core = m[0].replace(/[.!?,;:)"'”’]+$/, '');

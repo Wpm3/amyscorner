@@ -13,7 +13,9 @@ import type { ReaderKeyHandlers } from './useReaderKeys';
  */
 export function useReaderKeys(h: ReaderKeyHandlers): void {
   const ref = useRef(h);
-  ref.current = h;
+  useEffect(() => {
+    ref.current = h;
+  });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;

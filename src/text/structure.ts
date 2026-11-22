@@ -12,11 +12,15 @@ import type { Block, ContentRange, ParsedDocument, RawTocEntry, TocEntry } from 
  *     matter (acknowledgments, about the author, index…).
  */
 
-export const STRUCTURE_VERSION = 1;
+export const STRUCTURE_VERSION = 2;
+
+/** Where the table of contents came from. Only `headings` is a guess. */
+export type TocSource = 'builtin' | 'printed' | 'headings' | 'none';
 
 export interface AnalyzedDocument {
   blocks: Block[];
   toc: TocEntry[];
+  tocSource: TocSource;
   content: ContentRange;
 }
 
@@ -325,12 +329,19 @@ export function analyzeDocument(doc: Pick<ParsedDocument, 'blocks' | 'toc' | 'bo
 
   // Table of contents: built-in → printed → headings.
   let toc: TocEntry[] = doc.toc?.length ? resolveToc(doc.toc, blocks) : [];
+  let tocSource: TocSource = toc.length >= 2 ? 'builtin' : 'none';
   const printed = findPrintedToc(blocks);
-  if (toc.length < 2 && printed.entries.length >= 2) toc = printed.entries;
+  if (toc.length < 2 && printed.entries.length >= 2) {
+    toc = printed.entries;
+    tocSource = 'printed';
+  }
   // A TOC from the source (or a printed contents list) can define the content range;
   // one rebuilt from headings can't (it includes title-page headings etc.).
   const tocIsAuthoritative = toc.length >= 2;
-  if (toc.length < 2) toc = headingsToc(blocks);
+  if (toc.length < 2) {
+    toc = headingsToc(blocks);
+    tocSource = toc.length ? 'headings' : 'none';
+  }
 
   // Content range: explicit markers → EPUB landmarks → TOC → heuristics.
   let range: { start: number; end: number } | null = null;
@@ -380,5 +391,25 @@ export function analyzeDocument(doc: Pick<ParsedDocument, 'blocks' | 'toc' | 'bo
   const content: ContentRange = { ...range, source };
   toc = toc.map((e) => (e.block < content.start || e.block >= content.end ? { ...e, skipped: true } : e));
   blocks = blocks.map(({ anchors: _a, ...rest }) => rest);
-  return { blocks, toc, content };
+  return { blocks, toc, tocSource, content };
+}
+
+/**
+ * Bring a stored book up to the current structure version without losing
+ * information that only the original file had (built-in TOC, landmarks).
+ */
+export function upgradeBook<T extends { blocks: Block[]; toc?: TocEntry[]; content?: ContentRange; tocSource?: TocSource; structureVersion?: number }>(
+  book: T,
+): T & AnalyzedDocument & { structureVersion: number } {
+  const version = book.structureVersion ?? 0;
+  if (version >= 1 && book.toc && book.content) {
+    // v1 stored the TOC and range but not where the TOC came from. A TOC whose
+    // entries are exactly the document's headings may have been guessed.
+    const mirrorsHeadings =
+      book.toc.length > 0 &&
+      book.toc.every((e) => book.blocks[e.block]?.kind === 'heading' && book.blocks[e.block].text === e.title && !e.skipped);
+    const tocSource: TocSource = book.tocSource ?? (book.toc.length < 2 ? 'none' : mirrorsHeadings ? 'headings' : 'builtin');
+    return { ...book, toc: book.toc, content: book.content, tocSource, structureVersion: STRUCTURE_VERSION };
+  }
+  return { ...book, ...analyzeDocument({ blocks: book.blocks }), structureVersion: STRUCTURE_VERSION };
 }

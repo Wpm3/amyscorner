@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewInstance } from 'react-native';
 import { useSettings } from '../store/settings';
 import type { TocEntry } from '../text/blocks';
@@ -56,10 +56,13 @@ export function TocPanel({ toc, currentIndex, onSelect, onClose }: Props) {
   const scrollRef = useRef<ScrollViewInstance>(null);
   const rowY = useRef(new Map<number, number>());
 
-  useEffect(() => {
-    if (currentIndex < 0) return;
-    setExpanded((prev) => new Set([...prev, ...ancestors(toc, currentIndex)]));
-  }, [currentIndex, toc]);
+  // When the reading position moves to another entry, open the sections around it
+  // (adjusting state during render, as React recommends for prop-driven updates).
+  const [openedFor, setOpenedFor] = useState(currentIndex);
+  if (openedFor !== currentIndex) {
+    setOpenedFor(currentIndex);
+    if (currentIndex >= 0) setExpanded((prev) => new Set([...prev, ...ancestors(toc, currentIndex)]));
+  }
 
   // Visible rows: an entry is hidden if any ancestor is collapsed.
   const visible = useMemo(() => {

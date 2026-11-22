@@ -37,6 +37,8 @@
     "@types/node": "^26.6.6",
     "@types/react": "~19.3.0",
     "babel-preset-expo": "^58.0.26",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "~58.0.4",
     "jest": "^30.5.2",
     "jest-expo": "~58.0.15",
     "typescript": "~6.0.3"
@@ -54,7 +56,8 @@
     "desktop:prepare": "expo export --platform web && node scripts/prepare-desktop.js",
     "desktop:start": "npm run desktop:prepare && npm --prefix desktop start",
     "desktop:build:win": "npm run desktop:prepare && npm --prefix desktop run build:win",
-    "desktop:build:win:lite": "expo export --platform web && npm --prefix desktop-lite run build"
+    "desktop:build:win:lite": "expo export --platform web && npm --prefix desktop-lite run build",
+    "lint": "expo lint"
   },
   "private": true,
   "jest": {

@@ -6,6 +6,7 @@ import { getJson, setJson } from './storage';
 export type UnrevealedStyle = 'faded' | 'bars' | 'hidden';
 export type ClauseMode = 'off' | 'tint' | 'cascade';
 export type TapLayout = 'zones' | 'anywhere';
+export type ProgressBars = 'both' | 'document' | 'off';
 
 export interface Settings {
   theme: ThemeName;
@@ -27,6 +28,8 @@ export interface Settings {
   speechRate: number;
   showSentenceCounter: boolean;
   showBookProgress: boolean;
+  /** Bottom progress bars: chapter (when the document has chapters) + whole document. */
+  progressBars: ProgressBars;
   breakReminderMinutes: number; // 0 = off
   autoRevealFirst: boolean;
   /** Start at the real text and stop before back matter (copyright, contents, index…). */
@@ -50,6 +53,7 @@ export const DEFAULT_SETTINGS: Settings = {
   speechRate: 1,
   showSentenceCounter: true,
   showBookProgress: false,
+  progressBars: 'both',
   breakReminderMinutes: 25,
   autoRevealFirst: false,
   skipFrontBack: true,

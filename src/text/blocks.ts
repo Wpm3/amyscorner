@@ -75,6 +75,8 @@ export interface Book {
   addedAt: number;
   blocks: Block[];
   toc: TocEntry[];
+  /** Where the TOC came from: the file itself, a printed contents page, or guessed from headings. */
+  tocSource?: 'builtin' | 'printed' | 'headings' | 'none';
   content: ContentRange;
   /** Structure-detection version, so older imports can be re-analysed. */
   structureVersion?: number;

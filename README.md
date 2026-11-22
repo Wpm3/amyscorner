@@ -52,6 +52,28 @@ Every format then gets a merge pass. It joins a paragraph that doesn't end a sen
 |---|---|
 | ![](docs/screenshots/contents-phone.png) | ![](docs/screenshots/contents-desktop.png) |
 
+## Progress bars
+The bottom of the reader shows two progress bars:
+1. **Chapter progress**, labelled "Chapter 2 of 3".
+2. **Whole book or document.**
+
+The sentence dots below them show progress through the current paragraph.
+
+**Progress is measured by amount of text, not paragraph count**, and includes the sentences you've revealed in the current paragraph. The whole-book bar covers only the text you actually read, so skipped front and back matter doesn't count.
+
+**Chapters are verified before the chapter bar is shown** (`src/text/chapters.ts`):
+- There must be at least two divisions inside the reading range.
+- They must split the text from near its start. If most of the text comes before the first heading, those headings don't count.
+- When the top level is "Part One / Part Two" containers, the chapters inside them are used instead.
+- Contents taken from the file itself or from a printed contents page are trusted.
+- Contents guessed from headings must also pass size checks. Headings on nearly every paragraph are labels, not chapters.
+- Headed divisions that don't read like chapters are labelled **"Section"**.
+- With no verified chapters, only the whole-document bar is shown.
+
+**Colours:** the bars follow the dataviz skill's meter-list pattern. Each theme's bar colour (`theme.meter`) passed its palette validator for lightness, colour strength and ≥3:1 contrast. The track is a lighter step of the same hue, and text uses normal text colours. You can switch the bars between *chapter + book*, *book only* or *off* in Settings.
+
+![Progress bars](docs/screenshots/progress-phone.png)
+
 ## Design decisions (from the "council")
 Three research passes shaped the app: reading UX for ADHD and low executive function, mobile architecture, and sentence/clause segmentation.
 
@@ -110,7 +132,8 @@ __tests__/          Jest tests for segmentation, every parser, PDF layout and ta
 ## Run it
 ```bash
 npm install          # also generates the offline PDF engine
-npm test             # 45 tests
+npm test             # unit and parser tests
+npx expo lint        # ESLint (eslint-config-expo)
 npm run typecheck
 npx expo start       # scan the QR code with Expo Go on iPhone or Android
 ```

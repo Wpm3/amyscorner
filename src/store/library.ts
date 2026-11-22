@@ -1,5 +1,5 @@
 import type { Block, Book, BookFormat, ParsedDocument } from '../text/blocks';
-import { analyzeDocument, STRUCTURE_VERSION } from '../text/structure';
+import { analyzeDocument, STRUCTURE_VERSION, upgradeBook } from '../text/structure';
 import { deleteBookFile, readBookFile, writeBookFile } from './bookFiles';
 import { getJson, getJsonArray, removeKey, setJson } from './storage';
 
@@ -34,8 +34,8 @@ export async function addBook(doc: ParsedDocument, format: BookFormat, fallbackT
   if (!doc.blocks.length) throw new Error('No readable text was found in this document.');
   const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const title = (doc.title?.trim() || fallbackTitle.replace(/\.[a-z0-9]+$/i, '')).slice(0, 200);
-  const { blocks, toc, content } = analyzeDocument(doc);
-  const book: Book = { id, title, author: doc.author, format, addedAt: Date.now(), blocks, toc, content, structureVersion: STRUCTURE_VERSION };
+  const { blocks, toc, tocSource, content } = analyzeDocument(doc);
+  const book: Book = { id, title, author: doc.author, format, addedAt: Date.now(), blocks, toc, tocSource, content, structureVersion: STRUCTURE_VERSION };
   await writeBookFile(id, JSON.stringify(book));
   const summary: BookSummary = { id, title, author: doc.author, format, addedAt: book.addedAt, blockCount: blocks.length, contentStart: content.start, contentEnd: content.end };
   const index = await getJsonArray<BookSummary>(INDEX_KEY);
@@ -48,9 +48,8 @@ export async function loadBook(id: string): Promise<Book | null> {
   if (!raw) return null;
   let book = JSON.parse(raw) as Book;
   if ((book.structureVersion ?? 0) < STRUCTURE_VERSION || !book.toc || !book.content) {
-    // Imported before structure detection existed: analyse it now and save.
-    const analyzed = analyzeDocument({ blocks: book.blocks });
-    book = { ...book, ...analyzed, structureVersion: STRUCTURE_VERSION };
+    // Saved by an older version: upgrade (keeping any built-in TOC) and save.
+    book = upgradeBook(book);
     await writeBookFile(id, JSON.stringify(book));
   }
   const index = await getJsonArray<BookSummary>(INDEX_KEY);

@@ -6,7 +6,9 @@ import type { ImportSource } from './useImporter';
 export function useFileDrop(onDrop: (src: ImportSource) => void): boolean {
   const [over, setOver] = useState(false);
   const cb = useRef(onDrop);
-  cb.current = onDrop;
+  useEffect(() => {
+    cb.current = onDrop;
+  });
 
   useEffect(() => {
     let depth = 0;

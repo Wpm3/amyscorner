@@ -19,12 +19,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ParagraphView } from '../../components/ParagraphView';
+import { ProgressMeters } from '../../components/ProgressMeters';
 import { currentTocIndex, TocPanel } from '../../components/TocPanel';
 import { useReaderKeys } from '../../hooks/useReaderKeys';
 import { Button } from '../../components/ui';
 import { getPosition, loadBook, savePosition } from '../../store/library';
 import { useSettings } from '../../store/settings';
 import type { Book, TocEntry } from '../../text/blocks';
+import { blockOffsets, detectChapters, readingProgress } from '../../text/chapters';
 import { clampPosition, stepBack, stepForward, type Position } from '../../text/navigation';
 import { segmentBlock, type Sentence } from '../../text/paragraph';
 import { withAlpha } from '../../theme/color';
@@ -54,6 +56,22 @@ const KEYS: [string, string][] = [
   ['Esc', 'Back to library'],
 ];
 
+/** Sentence segmentation, computed lazily and cached per book object (outside React state). */
+const segmentCache = new WeakMap<Book, Map<number, Sentence[]>>();
+function sentencesFor(book: Book, i: number): Sentence[] {
+  let perBook = segmentCache.get(book);
+  if (!perBook) {
+    perBook = new Map();
+    segmentCache.set(book, perBook);
+  }
+  let s = perBook.get(i);
+  if (!s) {
+    s = segmentBlock(book.blocks[i]);
+    perBook.set(i, s);
+  }
+  return s;
+}
+
 const WIDE = 900; // docked sidebar at this window width and up
 const SIDEBAR = 320;
 const RECAP_AFTER_MS = 12 * 60 * 60 * 1000;
@@ -78,26 +96,14 @@ export default function Reader() {
   const [reduceMotion, setReduceMotion] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
 
-  const segCache = useRef(new Map<number, Sentence[]>());
   const lastTap = useRef(0);
-  const sessionStart = useRef(Date.now());
-  const fade = useRef(new Animated.Value(1)).current;
+  const sessionStart = useRef(0);
+  const [fade] = useState(() => new Animated.Value(1));
   const scrollRef = useRef<ScrollViewInstance>(null);
   const [contentH, setContentH] = useState(0);
   const [viewH, setViewH] = useState(0);
 
-  const sentencesOf = useCallback(
-    (i: number): Sentence[] => {
-      if (!book) return [];
-      let s = segCache.current.get(i);
-      if (!s) {
-        s = segmentBlock(book.blocks[i]);
-        segCache.current.set(i, s);
-      }
-      return s;
-    },
-    [book],
-  );
+  const sentencesOf = useCallback((i: number): Sentence[] => (book ? sentencesFor(book, i) : []), [book]);
   const count = useCallback((i: number) => sentencesOf(i).length, [sentencesOf]);
 
   // Load the book and restore the exact sentence position.
@@ -111,7 +117,6 @@ export default function Reader() {
           setError('This book could not be found.');
           return;
         }
-        segCache.current.clear();
         const saved = await getPosition(b.id);
         const counter = (i: number) => segmentBlock(b.blocks[i]).length;
         // First open: jump straight past the front matter to where the text begins.
@@ -147,7 +152,10 @@ export default function Reader() {
     if (book) savePosition(book.id, pos).catch(() => {});
   }, [book, pos]);
 
-  // Gentle break reminder.
+  // Gentle break reminder (the session clock starts when the reader opens).
+  useEffect(() => {
+    sessionStart.current = Date.now();
+  }, []);
   useEffect(() => {
     if (!settings.breakReminderMinutes) return;
     const t = setInterval(() => {
@@ -157,6 +165,9 @@ export default function Reader() {
   }, [settings.breakReminderMinutes]);
 
   const sentences = book ? sentencesOf(pos.block) : [];
+  // Text offsets (progress by amount of text) and verified chapters, once per book.
+  const offsets = useMemo(() => (book ? blockOffsets(book.blocks) : [0]), [book]);
+  const chapterInfo = useMemo(() => (book ? detectChapters(book) : null), [book]);
 
   // Reading bounds: the detected content (front/back matter skipped), unless the
   // reader turned that off or deliberately jumped into a skipped section.
@@ -236,7 +247,9 @@ export default function Reader() {
 
   // Speak the newly revealed sentence (read-aloud), or drive Listen mode.
   const nextRef = useRef(next);
-  nextRef.current = next;
+  useEffect(() => {
+    nextRef.current = next;
+  });
   useEffect(() => {
     if (!book || pos.revealed === 0) {
       if (listening) {
@@ -317,13 +330,19 @@ export default function Reader() {
   const block = book.blocks[pos.block];
   const revealedText = sentences.slice(0, pos.revealed).map((s) => s.text).join(' ');
   const hasToc = (book.toc?.length ?? 0) >= 2;
+  const narrow = width < 560; // phone widths: compact top-bar buttons so the title stays readable
   const docked = hasToc && tocOpen && width >= WIDE;
   const columnWidth = Math.min(width - (docked ? SIDEBAR : 0) - 40, settings.fontSize * 34);
   const isFirstEver = pos.block === (book.content?.start ?? 0) && pos.revealed === 0;
   const tocIndex = hasToc ? currentTocIndex(book.toc, pos.block) : -1;
   const chapter = tocIndex >= 0 ? book.toc[tocIndex].title : null;
-  const span = Math.max(1, bounds.end - bounds.start);
-  const bookPct = Math.min(100, Math.max(0, ((pos.block - bounds.start + 1) / span) * 100));
+  // How much of the current paragraph has been read: revealed sentences by length.
+  const totalChars = sentences.reduce((n, x) => n + x.text.length, 0);
+  const readChars = sentences.slice(0, pos.revealed).reduce((n, x) => n + x.text.length, 0);
+  const progress = finished
+    ? { document: 1, chapter: null }
+    : readingProgress(offsets, { block: pos.block, fraction: totalChars ? readChars / totalChars : 0 }, bounds, chapterInfo?.chapters ?? null);
+  const isBook = ['epub', 'pdf', 'fb2'].includes(book.format);
   const skippedEnd = settings.skipFrontBack && book.content && book.content.end < book.blocks.length;
 
   const tocPanel = hasToc ? <TocPanel toc={book.toc} currentIndex={tocIndex} onSelect={jumpTo} onClose={() => setTocOpen(false)} /> : null;
@@ -347,8 +366,13 @@ export default function Reader() {
             <Text numberOfLines={1} style={[muted, styles.chapterTitle, { color: withAlpha(theme.muted, 0.85) }]}>{chapter}</Text>
           )}
         </View>
-        <Button label={listening ? '■ Stop' : '▶ Listen'} kind="ghost" onPress={toggleListen} accessibilityHint="Reads and reveals sentences aloud" />
-        {Platform.OS === 'web' && (
+        <Button
+          label={narrow ? (listening ? '■' : '▶') : listening ? '■ Stop' : '▶ Listen'}
+          kind="ghost"
+          onPress={toggleListen}
+          accessibilityHint="Reads and reveals sentences aloud"
+        />
+        {Platform.OS === 'web' && !narrow && (
           <Button label="⌨" kind="ghost" onPress={() => setShowKeys((v) => !v)} accessibilityHint="Keyboard shortcuts" />
         )}
         <Button label="Aa" kind="ghost" onPress={() => router.push('/settings')} accessibilityHint="Reading settings" />
@@ -356,11 +380,6 @@ export default function Reader() {
       <View style={styles.body}>
       {docked && <View style={{ width: SIDEBAR }}>{tocPanel}</View>}
       <View style={styles.main}>
-      {settings.showBookProgress && (
-        <View style={[styles.bookProgress, { backgroundColor: theme.placeholder }]} accessibilityLabel={`Book progress ${Math.round(bookPct)} percent`}>
-          <View style={{ height: 3, backgroundColor: theme.accent, width: `${bookPct}%` }} />
-        </View>
-      )}
 
       {breakDue && (
         <View style={[styles.banner, { backgroundColor: theme.surface, borderColor: theme.border }]} accessibilityLiveRegion="polite">
@@ -432,6 +451,16 @@ export default function Reader() {
         </ScrollView>
       </Pressable>
 
+      {/* Progress: chapter (only when the document verifiably has chapters), then the whole document. */}
+      {settings.progressBars !== 'off' && (
+        <ProgressMeters
+          chapter={progress.chapter}
+          chapterWord={chapterInfo?.kind === 'section' ? 'Section' : 'Chapter'}
+          document={progress.document}
+          documentWord={isBook ? 'Book' : 'Document'}
+          showChapter={settings.progressBars === 'both'}
+        />
+      )}
       {/* Bottom bar: explicit large buttons (also usable one-handed / with switch access). */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 8 }]}>
         <Button label="‹" kind="ghost" onPress={back} style={styles.navBtn} accessibilityHint="Previous sentence" />
@@ -494,7 +523,6 @@ const styles = StyleSheet.create({
   main: { flex: 1 },
   drawerBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.35)' },
   drawer: { position: 'absolute', top: 0, bottom: 0, left: 0 },
-  bookProgress: { height: 3, marginHorizontal: 16, borderRadius: 2, overflow: 'hidden' },
   banner: { flexDirection: 'row', alignItems: 'center', margin: 12, padding: 12, borderRadius: 12, borderWidth: 1, gap: 8 },
   tapArea: { flex: 1 },
   scrollContent: { flexGrow: 1 },

@@ -82,7 +82,12 @@ export default function SettingsScreen() {
 
         <SectionTitle>Focus & progress</SectionTitle>
         <Toggle label="Show sentence dots" value={settings.showSentenceCounter} onChange={(v) => update({ showSentenceCounter: v })} hint="How many sentences are in this paragraph." />
-        <Toggle label="Show whole-book progress" value={settings.showBookProgress} onChange={(v) => update({ showBookProgress: v })} hint="Off by default to avoid overwhelm." />
+        <Text style={[label, styles.gap]}>Progress bars</Text>
+        <Segmented label="Progress bars" value={settings.progressBars} onChange={(v) => update({ progressBars: v })}
+          options={[{ value: 'both', label: 'Chapter + book' }, { value: 'document', label: 'Book only' }, { value: 'off', label: 'Off' }]} />
+        <Text style={{ color: theme.muted, fontFamily: fontFamily(settings.font), fontSize: 14, marginTop: 8 }}>
+          The chapter bar only appears when the document really has chapters.
+        </Text>
         <Text style={[label, styles.gap]}>Break reminder</Text>
         <Segmented label="Break reminder" value={settings.breakReminderMinutes} onChange={(v) => update({ breakReminderMinutes: v })}
           options={[{ value: 0, label: 'Off' }, { value: 15, label: '15 min' }, { value: 25, label: '25 min' }, { value: 45, label: '45 min' }]} />
