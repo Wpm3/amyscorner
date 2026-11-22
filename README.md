@@ -170,7 +170,7 @@ npx eas-cli@latest submit -p ios                        # upload to TestFlight /
 The bundle ID and package name are `com.amyscorner.unfold` (set in `app.json`).
 
 ### Android APK without an Expo account
-The **"Android build" GitHub Action** (`.github/workflows/android.yml`) builds `Unfold.apk` on a Linux runner. Run it from the Actions tab, or push a `v*` tag, and download the APK from the run's artifacts. To install it, copy it to your phone, open it, and allow "Install unknown apps" for your file manager or browser when Android asks.
+The **"Android build" GitHub Action** (`.github/workflows/android.yml`) builds `Unfold.apk` on a Linux runner. Run it from the Actions tab and download the APK from the run's artifacts, or push a `v*` tag to publish it as a GitHub Release. The latest release's APK is always at https://github.com/Wpm3/amyscorner/releases/latest/download/Unfold.apk, a direct link that needs no sign-in. To install it, copy it to your phone, open it, and allow "Install unknown apps" for your file manager or browser when Android asks.
 
 To build the same APK locally, you need the Android SDK (Android Studio) and JDK 17+:
 ```bash
