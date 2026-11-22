@@ -1,4 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
+// Import only the Ionicons set, so other icon fonts aren't bundled.
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, useLocalSearchParams } from 'expo-router';
